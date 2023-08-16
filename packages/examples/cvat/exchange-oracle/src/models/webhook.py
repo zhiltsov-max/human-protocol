@@ -28,8 +28,8 @@ class Webhook(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     wait_until = Column(DateTime(timezone=True), server_default=func.now())
-    event_type = Column(String, nullable=False)
-    event_data = Column(JSON, nullable=True)
+    event_type = Column(String, nullable=False, server_default="")
+    event_data = Column(JSON, nullable=True, server_default=None)
 
     __table_args__ = (
         UniqueConstraint("escrow_address", "type", name="_escrow_address_type_uc"),
