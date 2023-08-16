@@ -4,14 +4,14 @@ import uuid
 from src.database import SessionLocal
 from src.constants import Networks
 from src.modules.oracle_webhook.constants import (
-    OracleWebhookTypes,
+    OracleWebhookSenderType,
     OracleWebhookStatuses,
 )
 from src.modules.oracle_webhook.model import Webhook
 from sqlalchemy.exc import IntegrityError
 
 from src.modules.oracle_webhook.constants import (
-    OracleWebhookTypes,
+    OracleWebhookSenderType,
     OracleWebhookStatuses,
 )
 from src.modules.oracle_webhook import service as webhook_service
@@ -33,8 +33,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
 
         webhook = self.session.query(Webhook).filter_by(id=webhook_id).first()
@@ -43,7 +43,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertEqual(webhook.chain_id, chain_id)
         self.assertEqual(webhook.attempts, 0)
         self.assertEqual(webhook.signature, signature)
-        self.assertEqual(webhook.type, OracleWebhookTypes.job_launcher.value)
+        self.assertEqual(webhook.type, OracleWebhookSenderType.job_launcher.value)
         self.assertEqual(webhook.status, OracleWebhookStatuses.pending.value)
 
     def test_create_webhook_none_escrow_address(self):
@@ -53,8 +53,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=None,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
         with self.assertRaises(IntegrityError):
             self.session.commit()
@@ -66,8 +66,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=None,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
         with self.assertRaises(IntegrityError):
             self.session.commit()
@@ -80,8 +80,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=None,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=None,
         )
         with self.assertRaises(IntegrityError):
             self.session.commit()
@@ -94,8 +94,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.recording_oracle.value,
-            signature=None,
+            sender_type=OracleWebhookSenderType.recording_oracle.value,
+            sender_signature=None,
         )
         with self.assertRaises(ValueError):
             self.session.commit()
@@ -109,7 +109,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature1",
             escrow_address="0x1234567890123456789012345678901234567890",
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
         webhook2_id = str(uuid.uuid4())
@@ -118,7 +118,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature2",
             escrow_address="0x1234567890123456789012345678901234567891",
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
         webhook3_id = str(uuid.uuid4())
@@ -127,7 +127,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature3",
             escrow_address="0x1234567890123456789012345678901234567892",
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.completed.value,
         )
 
@@ -138,7 +138,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             escrow_address="0x1234567890123456789012345678901234567892",
             chain_id=chain_id,
             s3_url="https://some-dummy-url.com/1.json",
-            type=OracleWebhookTypes.recording_oracle.value,
+            type=OracleWebhookSenderType.recording_oracle.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -149,14 +149,14 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         pending_webhooks = webhook_service.get_pending_webhooks(
-            self.session, OracleWebhookTypes.job_launcher.value, 10
+            self.session, OracleWebhookSenderType.job_launcher.value, 10
         )
         self.assertEqual(len(pending_webhooks), 2)
         self.assertEqual(pending_webhooks[0].id, webhook1_id)
         self.assertEqual(pending_webhooks[1].id, webhook2_id)
 
         pending_webhooks = webhook_service.get_pending_webhooks(
-            self.session, OracleWebhookTypes.recording_oracle.value, 10
+            self.session, OracleWebhookSenderType.recording_oracle.value, 10
         )
         self.assertEqual(len(pending_webhooks), 1)
         self.assertEqual(pending_webhooks[0].id, webhook4_id)
@@ -170,8 +170,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
 
         webhook_service.update_webhook_status(
@@ -184,7 +184,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertEqual(webhook.chain_id, chain_id)
         self.assertEqual(webhook.attempts, 0)
         self.assertEqual(webhook.signature, signature)
-        self.assertEqual(webhook.type, OracleWebhookTypes.job_launcher.value)
+        self.assertEqual(webhook.type, OracleWebhookSenderType.job_launcher.value)
         self.assertEqual(webhook.status, OracleWebhookStatuses.completed.value)
 
     def test_update_webhook_invalid_status(self):
@@ -196,8 +196,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
 
         with self.assertRaises(ValueError):
@@ -214,8 +214,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
 
         webhook_service.handle_webhook_success(self.session, webhook_id)
@@ -226,7 +226,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertEqual(webhook.chain_id, chain_id)
         self.assertEqual(webhook.attempts, 1)
         self.assertEqual(webhook.signature, signature)
-        self.assertEqual(webhook.type, OracleWebhookTypes.job_launcher.value)
+        self.assertEqual(webhook.type, OracleWebhookSenderType.job_launcher.value)
         self.assertEqual(webhook.status, OracleWebhookStatuses.completed.value)
 
     def test_handle_webhook_fail(self):
@@ -238,8 +238,8 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session,
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
-            signature=signature,
+            sender_type=OracleWebhookSenderType.job_launcher.value,
+            sender_signature=signature,
         )
 
         webhook_service.handle_webhook_fail(self.session, webhook_id)
@@ -250,7 +250,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertEqual(webhook.chain_id, chain_id)
         self.assertEqual(webhook.attempts, 1)
         self.assertEqual(webhook.signature, signature)
-        self.assertEqual(webhook.type, OracleWebhookTypes.job_launcher.value)
+        self.assertEqual(webhook.type, OracleWebhookSenderType.job_launcher.value)
         self.assertEqual(webhook.status, OracleWebhookStatuses.pending.value)
 
         for i in range(4):
@@ -262,5 +262,5 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertEqual(webhook.chain_id, chain_id)
         self.assertEqual(webhook.attempts, 5)
         self.assertEqual(webhook.signature, signature)
-        self.assertEqual(webhook.type, OracleWebhookTypes.job_launcher.value)
+        self.assertEqual(webhook.type, OracleWebhookSenderType.job_launcher.value)
         self.assertEqual(webhook.status, OracleWebhookStatuses.failed.value)

@@ -6,7 +6,9 @@ from http import HTTPStatus
 from typing import Dict, List
 
 from src.config import Config
+
 from cvat_sdk.api_client import Configuration, ApiClient, models, exceptions
+from cvat_sdk.core.helpers import get_paginated_collection
 
 configuration = Configuration(
     host=Config.cvat_config.cvat_url,
@@ -179,3 +181,14 @@ def delete_cloustorage(cvat_id: int) -> None:
             api_client.cloudstorages_api.destroy(cvat_id)
         except exceptions.ApiException as e:
             logger.error(f"Exception when calling CloudstoragesApi.destroy(): {e}\n")
+
+
+def fetch_projects(assignee: str) -> List[Dict]:
+    logger = logging.getLogger("app")
+    with ApiClient(configuration) as api_client:
+        try:
+            return get_paginated_collection(
+                api_client.projects_api.list_endpoint, assignee="", return_json=True
+            )
+        except exceptions.ApiException as e:
+            logger.error(f"Exception when calling ProjectsApi.list(): {e}\n")

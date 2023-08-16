@@ -1,10 +1,10 @@
 # pylint: disable=too-few-public-methods
-from sqlalchemy import Column, String, DateTime, Enum, Integer, UniqueConstraint
+from sqlalchemy import JSON, Column, String, DateTime, Enum, Integer, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.event import listens_for
 
 from src.modules.oracle_webhook.constants import (
-    OracleWebhookTypes,
+    OracleWebhookSenderType,
     OracleWebhookStatuses,
 )
 from src.database import Base
@@ -18,7 +18,7 @@ class Webhook(Base):
     escrow_address = Column(String(42), nullable=False)
     chain_id = Column(Integer, Enum(Networks), nullable=False)
     s3_url = Column(String)
-    type = Column(String, Enum(OracleWebhookTypes), nullable=False)
+    type = Column(String, Enum(OracleWebhookSenderType), nullable=False)
     status = Column(
         String,
         Enum(OracleWebhookStatuses),
@@ -28,20 +28,23 @@ class Webhook(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     wait_until = Column(DateTime(timezone=True), server_default=func.now())
+    event_type = Column(String, nullable=False)
+    event_data = Column(JSON, nullable=True)
+
     __table_args__ = (
         UniqueConstraint("escrow_address", "type", name="_escrow_address_type_uc"),
     )
 
     def __repr__(self):
-        return f"Webhook. id={self.id}"
+        return f"Webhook. id={self.id} type={self.type}.{self.event_type}"
 
 
 @listens_for(Webhook, "before_insert")
-def validate_type_and_s3_url_on_insert(mapper, connection, target):
+def validate_on_insert(mapper, connection, target):
     if (
-        target.type == OracleWebhookTypes.recording_oracle.value
+        target.type == OracleWebhookSenderType.recording_oracle.value
         and target.s3_url is None
     ):
         raise ValueError(
-            f"Cannot create a webhook with type {OracleWebhookTypes.recording_oracle.value} and s3_url set to None."
+            f"Cannot create a webhook with type {OracleWebhookSenderType.recording_oracle.value} and s3_url set to None."
         )

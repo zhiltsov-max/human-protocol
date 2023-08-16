@@ -6,7 +6,7 @@ from src.config import CronConfig
 from src.modules.cvat.job_flows import job_creation_process, revert_job_creation
 from src.modules.chain.escrow import get_escrow_manifest, validate_escrow
 
-from src.modules.oracle_webhook.constants import OracleWebhookTypes
+from src.modules.oracle_webhook.constants import OracleWebhookSenderType
 import src.modules.oracle_webhook.service as db_service
 
 
@@ -25,7 +25,7 @@ def process_job_launcher_webhooks() -> None:
         with SessionLocal.begin() as session:
             webhooks = db_service.get_pending_webhooks(
                 session,
-                OracleWebhookTypes.job_launcher.value,
+                OracleWebhookSenderType.job_launcher.value,
                 CronConfig.process_job_launcher_webhooks_chunk_size,
             )
             for webhook in webhooks:

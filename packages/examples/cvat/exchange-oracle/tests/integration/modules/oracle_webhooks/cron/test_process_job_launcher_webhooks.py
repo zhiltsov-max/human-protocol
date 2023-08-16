@@ -8,7 +8,7 @@ from src.constants import Networks
 from src.database import SessionLocal
 from src.modules.oracle_webhook.constants import (
     OracleWebhookStatuses,
-    OracleWebhookTypes,
+    OracleWebhookSenderType,
 )
 from src.modules.oracle_webhook.jobs.process_job_launcher_webhooks import (
     process_job_launcher_webhooks,
@@ -38,7 +38,6 @@ class ServiceIntegrationTest(unittest.TestCase):
 
     @patch("src.modules.cvat.job_flows.cvat_api")
     def test_process_job_launcher_webhooks_successful(self, mock_cvat_api):
-
         mock_cvat_api.create_cloudstorage.return_value.id = 1
         mock_cvat_api.create_project.return_value.id = 1
         mock_cvat_api.create_task.return_value.id = 1
@@ -54,7 +53,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -91,7 +90,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -126,7 +125,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -162,7 +161,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -198,7 +197,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -237,7 +236,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -277,7 +276,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             signature="signature",
             escrow_address=escrow_address,
             chain_id=chain_id,
-            type=OracleWebhookTypes.job_launcher.value,
+            type=OracleWebhookSenderType.job_launcher.value,
             status=OracleWebhookStatuses.pending.value,
         )
 

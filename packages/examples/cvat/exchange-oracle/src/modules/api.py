@@ -1,7 +1,12 @@
-from fastapi import APIRouter, HTTPException, Header, Request
-from typing import Union
+from fastapi import APIRouter, HTTPException, Header, Query, Request
+from typing import Optional, Union
 
-from src.modules.api_schema import OracleWebhook, OracleWebhookResponse, CvatWebhook
+from src.modules.api_schema import (
+    OracleWebhook,
+    OracleWebhookResponse,
+    CvatWebhook,
+    TaskResponse,
+)
 from src.database import SessionLocal
 
 from src.modules.chain.escrow import validate_escrow
@@ -9,13 +14,15 @@ from src.validators.signature import validate_webhook_signature, validate_cvat_s
 
 from src.modules.cvat.handlers.webhook import cvat_webhook_handler
 from src.modules.oracle_webhook.service import create_webhook
-from src.modules.oracle_webhook.constants import OracleWebhookTypes
+from src.modules.oracle_webhook.constants import OracleWebhookSenderType
+from src.modules.exchange_oracle.service import get_available_tasks
+
 
 router = APIRouter()
 
 
 @router.post(
-    "/job-launcher",
+    "/webhook/job-launcher",
     description="Consumes a webhook from a job launcher",
 )
 async def job_launcher_webhook(
@@ -29,11 +36,13 @@ async def job_launcher_webhook(
 
         with SessionLocal.begin() as session:
             webhook_id = create_webhook(
-                session,
-                webhook.escrow_address,
-                webhook.chain_id,
-                OracleWebhookTypes.job_launcher.value,
-                human_signature,
+                session=session,
+                escrow_address=webhook.escrow_address,
+                chain_id=webhook.chain_id,
+                sender_type=OracleWebhookSenderType.job_launcher,
+                sender_signature=human_signature,
+                event_type=webhook.event_type,
+                event_data=webhook.event_data,
             )
 
         return OracleWebhookResponse(id=webhook_id)
@@ -42,7 +51,7 @@ async def job_launcher_webhook(
 
 
 @router.post(
-    "/cvat",
+    "/webhook/cvat",
     description="Consumes a webhook from a cvat",
 )
 async def cvat_webhook(
@@ -52,3 +61,13 @@ async def cvat_webhook(
 ):
     await validate_cvat_signature(request, x_signature_256)
     cvat_webhook_handler(cvat_webhook)
+
+
+@router.get("/tasks", description="Lists available tasks")
+async def list_tasks(
+    # TODO: add service authorization
+    # request: Request,
+    # human_signature: Union[str, None] = Header(default=None),
+    username: Optional[str] = Query(default=None),
+) -> list[TaskResponse]:
+    return get_available_tasks(username=username)

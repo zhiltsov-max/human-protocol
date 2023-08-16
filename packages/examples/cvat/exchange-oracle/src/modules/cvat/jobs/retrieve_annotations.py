@@ -8,7 +8,7 @@ from src.config import CronConfig, StorageConfig
 from src.modules.cvat.constants import ProjectStatuses
 from src.modules.cvat.handlers.annotation import get_annotations_handler
 
-from src.modules.oracle_webhook.constants import OracleWebhookTypes
+from src.modules.oracle_webhook.constants import OracleWebhookSenderType
 from src.modules.oracle_webhook.helpers import prepare_signature
 
 import src.modules.cvat.api_calls as cvat_api
@@ -79,7 +79,7 @@ def retrieve_annotations() -> None:
                     session,
                     project.escrow_address,
                     project.chain_id,
-                    OracleWebhookTypes.recording_oracle.value,
+                    OracleWebhookSenderType.recording_oracle.value,
                     prepare_signature(
                         project.escrow_address,
                         project.chain_id,

@@ -16,7 +16,7 @@ from src.modules.cvat.constants import (
 )
 from src.modules.cvat.model import Project, Task, Job
 from src.modules.oracle_webhook.constants import (
-    OracleWebhookTypes,
+    OracleWebhookSenderType,
     OracleWebhookStatuses,
 )
 from human_protocol_sdk.storage import StorageClient
@@ -80,7 +80,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             .scalars()
             .first()
         )
-        self.assertEqual(webhook.type, OracleWebhookTypes.recording_oracle.value)
+        self.assertEqual(webhook.type, OracleWebhookSenderType.recording_oracle.value)
         self.assertEqual(webhook.status, OracleWebhookStatuses.pending.value)
         self.assertIsNotNone(
             webhook.signature,

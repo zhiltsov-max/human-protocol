@@ -44,6 +44,6 @@ def init_api(app: FastAPI) -> FastAPI:
     }
 
     app.include_router(greet_router)
-    app.include_router(router, prefix="/webhook", responses=default_responses)
+    app.include_router(router, responses=default_responses)
 
     return app

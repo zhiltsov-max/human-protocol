@@ -6,7 +6,7 @@ from src.config import CronConfig
 
 from src.modules.chain.kvstore import get_recording_oracle_url
 
-from src.modules.oracle_webhook.constants import OracleWebhookTypes
+from src.modules.oracle_webhook.constants import OracleWebhookSenderType
 from src.modules.oracle_webhook.helpers import prepare_recording_oracle_webhook_body
 
 import src.modules.oracle_webhook.service as db_service
@@ -27,7 +27,7 @@ def process_recording_oracle_webhooks() -> None:
         with SessionLocal.begin() as session:
             webhooks = db_service.get_pending_webhooks(
                 session,
-                OracleWebhookTypes.recording_oracle.value,
+                OracleWebhookSenderType.recording_oracle.value,
                 CronConfig.process_recording_oracle_webhooks_chunk_size,
             )
             for webhook in webhooks:

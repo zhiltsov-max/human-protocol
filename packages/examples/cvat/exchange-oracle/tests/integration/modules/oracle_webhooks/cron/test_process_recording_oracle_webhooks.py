@@ -7,7 +7,7 @@ from src.constants import Networks
 from src.database import SessionLocal
 from src.modules.oracle_webhook.constants import (
     OracleWebhookStatuses,
-    OracleWebhookTypes,
+    OracleWebhookSenderType,
 )
 from src.modules.oracle_webhook.jobs.process_recording_oracle_webhooks import (
     process_recording_oracle_webhooks,
@@ -56,7 +56,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             escrow_address=escrow_address,
             chain_id=chain_id,
             s3_url="s3_url",
-            type=OracleWebhookTypes.recording_oracle.value,
+            type=OracleWebhookSenderType.recording_oracle.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -94,7 +94,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             escrow_address=escrow_address,
             chain_id=chain_id,
             s3_url="s3_url",
-            type=OracleWebhookTypes.recording_oracle.value,
+            type=OracleWebhookSenderType.recording_oracle.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -130,7 +130,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             escrow_address=escrow_address,
             chain_id=chain_id,
             s3_url="s3_url",
-            type=OracleWebhookTypes.recording_oracle.value,
+            type=OracleWebhookSenderType.recording_oracle.value,
             status=OracleWebhookStatuses.pending.value,
         )
 
@@ -178,7 +178,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             escrow_address=escrow_address,
             chain_id=chain_id,
             s3_url="s3_url",
-            type=OracleWebhookTypes.recording_oracle.value,
+            type=OracleWebhookSenderType.recording_oracle.value,
             status=OracleWebhookStatuses.pending.value,
         )
 

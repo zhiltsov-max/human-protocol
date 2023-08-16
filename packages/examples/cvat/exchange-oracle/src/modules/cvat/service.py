@@ -1,10 +1,11 @@
 import uuid
 
-from sqlalchemy import update
+from sqlalchemy import ColumnExpressionArgument, update
 from sqlalchemy.sql import select
 from sqlalchemy.orm import Session
 
-from typing import List
+from typing import List, Optional
+
 
 from src.modules.cvat.constants import ProjectStatuses, TaskStatuses, JobStatuses
 from src.modules.cvat.model import Project, Task, Job
@@ -66,6 +67,30 @@ def get_projects_by_status(
         .all()
     )
     return projects
+
+
+def get_available_projects(
+    session: Session, username: Optional[str] = None, limit: int = 10
+) -> List[Project]:
+    def _maybe_assigned_to_the_user(
+        expr: ColumnExpressionArgument,
+    ) -> ColumnExpressionArgument:
+        if username:
+            return expr | Project.jobs.any(Job.assignee == username)
+        return expr
+
+    return (
+        session.query(Project)
+        .where(
+            _maybe_assigned_to_the_user(
+                (Project.status == ProjectStatuses.annotation)
+                & Project.jobs.any(Job.assignee == "")
+            )
+        )
+        .distinct()
+        .limit(limit)
+        .all()
+    )
 
 
 def update_project_status(
