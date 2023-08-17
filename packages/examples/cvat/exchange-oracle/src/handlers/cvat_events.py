@@ -1,5 +1,5 @@
 from src.db import SessionLocal
-from src.core.types import EventTypes
+from src.core.types import CvatEventTypes
 
 import src.services.cvat as cvat_service
 
@@ -48,7 +48,7 @@ def handle_create_job_event(payload: dict) -> None:
 
 def cvat_webhook_handler(cvat_webhook: dict) -> None:
     match cvat_webhook.event:
-        case EventTypes.update_job.value:
+        case CvatEventTypes.update_job.value:
             handle_update_job_event(cvat_webhook)
-        case EventTypes.create_job.value:
+        case CvatEventTypes.create_job.value:
             handle_create_job_event(cvat_webhook)

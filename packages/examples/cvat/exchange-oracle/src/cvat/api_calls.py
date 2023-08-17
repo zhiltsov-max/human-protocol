@@ -1,13 +1,16 @@
+from enum import Enum
 import io
 import zipfile
 import xmltodict
 import logging
 from http import HTTPStatus
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from src.core.config import Config
 from cvat_sdk.api_client import Configuration, ApiClient, models, exceptions
 from cvat_sdk.core.helpers import get_paginated_collection
+
+from src.utils.enums import BetterEnumMeta
 
 configuration = Configuration(
     host=Config.cvat_config.cvat_url,
@@ -34,7 +37,8 @@ def create_cloudstorage(provider: str, bucket_name: str) -> Dict:
 
             return data
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling CloudstoragesApi.create(): {e}\n")
+            logger.exception(f"Exception when calling CloudstoragesApi.create(): {e}\n")
+            raise
 
 
 def create_project(escrow_address: str, labels: list) -> Dict:
@@ -49,7 +53,8 @@ def create_project(escrow_address: str, labels: list) -> Dict:
             (data, response) = api_client.projects_api.create(project_write_request)
             return data
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling ProjectsApi.create: {e}\n")
+            logger.exception(f"Exception when calling ProjectsApi.create: {e}\n")
+            raise
 
 
 def setup_cvat_webhooks(project_id: int) -> Dict:
@@ -75,7 +80,8 @@ def setup_cvat_webhooks(project_id: int) -> Dict:
             )
             return data
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling WebhooksApi.create(): {e}\n")
+            logger.exception(f"Exception when calling WebhooksApi.create(): {e}\n")
+            raise
 
 
 def create_task(project_id: int, escrow_address: str) -> Dict:
@@ -93,7 +99,8 @@ def create_task(project_id: int, escrow_address: str) -> Dict:
             return task_info
 
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling tasks_api.create: {e}\n")
+            logger.exception(f"Exception when calling tasks_api.create: {e}\n")
+            raise
 
 
 def get_cloudstorage_content(cloudstorage_id: int) -> List[str]:
@@ -106,9 +113,10 @@ def get_cloudstorage_content(cloudstorage_id: int) -> List[str]:
             # (data, response) = api_client.cloudstorages_api.retrieve(cloudstorage_id) Not working in SDK
             return content_data + ["manifest.jsonl"]
         except exceptions.ApiException as e:
-            logger.error(
+            logger.exception(
                 f"Exception when calling cloudstorages_api.retrieve_content: {e}\n"
             )
+            raise
 
 
 def put_task_data(task_id: int, cloudstorage_id: int) -> None:
@@ -129,7 +137,8 @@ def put_task_data(task_id: int, cloudstorage_id: int) -> None:
             return None
 
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling ProjectsApi.put_task_data: {e}\n")
+            logger.exception(f"Exception when calling ProjectsApi.put_task_data: {e}\n")
+            raise
 
 
 def fetch_task_jobs(task_id: int) -> List[Dict]:
@@ -139,7 +148,8 @@ def fetch_task_jobs(task_id: int) -> List[Dict]:
             (data, response) = api_client.jobs_api.list(task_id=task_id)
             return data
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling JobsApi.list: {e}\n")
+            logger.exception(f"Exception when calling JobsApi.list: {e}\n")
+            raise
 
 
 def get_job_annotations(cvat_project_id: int) -> Dict:
@@ -161,7 +171,10 @@ def get_job_annotations(cvat_project_id: int) -> Dict:
             annotations = xmltodict.parse(xml_content, attr_prefix="")
             return annotations["annotations"]
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling JobsApi.retrieve_annotations: {e}\n")
+            logger.exception(
+                f"Exception when calling JobsApi.retrieve_annotations: {e}\n"
+            )
+            raise
 
 
 def delete_project(cvat_id: int) -> None:
@@ -170,16 +183,20 @@ def delete_project(cvat_id: int) -> None:
         try:
             api_client.projects_api.destroy(cvat_id)
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling ProjectsApi.destroy(): {e}\n")
+            logger.exception(f"Exception when calling ProjectsApi.destroy(): {e}\n")
+            raise
 
 
-def delete_cloustorage(cvat_id: int) -> None:
+def delete_cloudstorage(cvat_id: int) -> None:
     logger = logging.getLogger("app")
     with ApiClient(configuration) as api_client:
         try:
             api_client.cloudstorages_api.destroy(cvat_id)
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling CloudstoragesApi.destroy(): {e}\n")
+            logger.exception(
+                f"Exception when calling CloudstoragesApi.destroy(): {e}\n"
+            )
+            raise
 
 
 def fetch_projects(assignee: str) -> List[Dict]:
@@ -190,4 +207,27 @@ def fetch_projects(assignee: str) -> List[Dict]:
                 api_client.projects_api.list_endpoint, assignee="", return_json=True
             )
         except exceptions.ApiException as e:
-            logger.error(f"Exception when calling ProjectsApi.list(): {e}\n")
+            logger.exception(f"Exception when calling ProjectsApi.list(): {e}\n")
+            raise
+
+
+class UploadStatus(str, Enum, metaclass=BetterEnumMeta):
+    QUEUED = "Queued"
+    STARTED = "Started"
+    FINISHED = "Finished"
+    FAILED = "Failed"
+
+
+def get_task_upload_status(cvat_id: int) -> Optional[UploadStatus]:
+    logger = logging.getLogger("app")
+
+    with ApiClient(configuration) as api_client:
+        try:
+            (status, _) = api_client.tasks_api.retrieve_status(cvat_id)
+            return UploadStatus[status.state.value]
+        except exceptions.ApiException as e:
+            if e.status == 404:
+                return None
+
+            logger.exception(f"Exception when calling ProjectsApi.list(): {e}\n")
+            raise

@@ -79,7 +79,7 @@ def process_exchange_oracle_webhooks() -> None:
 
                     db_service.handle_webhook_success(session, webhook.id)
                 except Exception as e:
-                    logger.error(
+                    logger.exception(
                         f"Webhook: {webhook.id} failed during execution. Error {e}"
                     )
                     db_service.handle_webhook_fail(session, webhook.id)
@@ -87,4 +87,4 @@ def process_exchange_oracle_webhooks() -> None:
         logger.info(f"{LOG_MODULE} Finishing cron job")
         return None
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)

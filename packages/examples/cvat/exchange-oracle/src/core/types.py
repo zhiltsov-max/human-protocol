@@ -10,7 +10,7 @@ class Networks(int, Enum, metaclass=BetterEnumMeta):
     localhost = Config.localhost.chain_id
 
 
-class EventTypes(str, Enum, metaclass=BetterEnumMeta):
+class CvatEventTypes(str, Enum, metaclass=BetterEnumMeta):
     update_job = "update:job"
     create_job = "create:job"
 
@@ -21,7 +21,7 @@ class ProjectStatuses(str, Enum, metaclass=BetterEnumMeta):
     recorded = "recorded"
 
 
-class TaskStatuses(str, Enum, metaclass=BetterEnumMeta):
+class TaskStatus(str, Enum, metaclass=BetterEnumMeta):
     annotation = "annotation"
     completed = "completed"
 
@@ -32,22 +32,32 @@ class JobStatuses(str, Enum, metaclass=BetterEnumMeta):
     completed = "completed"
 
 
-class JobTypes(str, Enum, metaclass=BetterEnumMeta):
+class TaskType(str, Enum, metaclass=BetterEnumMeta):
     image_label_binary = "IMAGE_LABEL_BINARY"
+    image_points = "IMAGE_POINTS"
+    image_boxes = "IMAGE_BOXES"
 
 
-class CvatLabelTypes(str, Enum, metaclass=BetterEnumMeta):
+class CvatLabelType(str, Enum, metaclass=BetterEnumMeta):
     tag = "tag"
+    points = "points"
+    rectangle = "rectangle"
 
 
-class Providers(str, Enum, metaclass=BetterEnumMeta):
+class CloudProviders(str, Enum, metaclass=BetterEnumMeta):
     aws = "AWS_S3_BUCKET"
     gcs = "GOOGLE_CLOUD_STORAGE"
 
 
 class OracleWebhookTypes(str, Enum, metaclass=BetterEnumMeta):
+    exchange_oracle = "exchange_oracle"
     job_launcher = "job_launcher"
     recording_oracle = "recording_oracle"
+
+
+class ExchangeOracleEventType(str, Enum, metaclass=BetterEnumMeta):
+    task_creation_failed = "task_creation_failed"
+    task_finished = "task_finished"
 
 
 class JobLauncherEventType(str, Enum, metaclass=BetterEnumMeta):

@@ -5,7 +5,7 @@ from src.chain.escrow import validate_escrow
 from src.core.types import OracleWebhookTypes
 from src.db import SessionLocal
 from src.schemas.webhook import OracleWebhook, OracleWebhookResponse
-from src.services.webhook import create_webhook
+import src.services.webhook as oracle_db_service
 from src.validators.signature import validate_webhook_signature
 
 router = APIRouter()
@@ -25,12 +25,12 @@ async def job_launcher_webhook(
         validate_escrow(webhook.chain_id, webhook.escrow_address)
 
         with SessionLocal.begin() as session:
-            webhook_id = create_webhook(
+            webhook_id = oracle_db_service.inbox.create_webhook(
                 session=session,
                 escrow_address=webhook.escrow_address,
                 chain_id=webhook.chain_id,
-                sender_type=OracleWebhookTypes.job_launcher,
-                sender_signature=human_signature,
+                type=OracleWebhookTypes.job_launcher,
+                signature=human_signature,
                 event_type=webhook.event_type,
                 event_data=webhook.event_data,
             )

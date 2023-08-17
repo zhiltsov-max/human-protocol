@@ -10,8 +10,8 @@ from src.models.webhook import Webhook
 from tests.unit.helpers.predefined_annotations import raw_binary_annotations
 from src.core.types import (
     ProjectStatuses,
-    JobTypes,
-    TaskStatuses,
+    TaskType,
+    TaskStatus,
     JobStatuses,
 )
 from src.models.cvat import Project, Task, Job
@@ -41,7 +41,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             cvat_id=1,
             cvat_cloudstorage_id=1,
             status=ProjectStatuses.completed.value,
-            job_type=JobTypes.image_label_binary.value,
+            job_type=TaskType.image_label_binary.value,
             escrow_address=escrow_address,
             chain_id=Networks.localhost.value,
             bucket_url="https://test.storage.googleapis.com/",
@@ -51,7 +51,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             id=str(uuid.uuid4()),
             cvat_id=1,
             cvat_project_id=1,
-            status=TaskStatuses.completed.value,
+            status=TaskStatus.completed.value,
         )
 
         job = Job(
@@ -113,7 +113,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             cvat_id=1,
             cvat_cloudstorage_id=1,
             status=ProjectStatuses.completed.value,
-            job_type=JobTypes.image_label_binary.value,
+            job_type=TaskType.image_label_binary.value,
             escrow_address=escrow_address,
             chain_id=Networks.localhost.value,
             bucket_url="https://test.storage.googleapis.com/",
@@ -123,7 +123,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             id=str(uuid.uuid4()),
             cvat_id=1,
             cvat_project_id=1,
-            status=TaskStatuses.completed.value,
+            status=TaskStatus.completed.value,
         )
 
         job = Job(
@@ -175,7 +175,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             cvat_id=1,
             cvat_cloudstorage_id=1,
             status=ProjectStatuses.completed.value,
-            job_type=JobTypes.image_label_binary.value,
+            job_type=TaskType.image_label_binary.value,
             escrow_address=escrow_address,
             chain_id=Networks.localhost.value,
             bucket_url="https://test.storage.googleapis.com/",
@@ -185,7 +185,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             id=str(uuid.uuid4()),
             cvat_id=1,
             cvat_project_id=1,
-            status=TaskStatuses.completed.value,
+            status=TaskStatus.completed.value,
         )
 
         job = Job(
@@ -245,7 +245,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             cvat_id=1,
             cvat_cloudstorage_id=1,
             status=ProjectStatuses.completed.value,
-            job_type=JobTypes.image_label_binary.value,
+            job_type=TaskType.image_label_binary.value,
             escrow_address=escrow_address,
             chain_id=Networks.localhost.value,
             bucket_url="https://test.storage.googleapis.com/",
@@ -255,7 +255,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             id=str(uuid.uuid4()),
             cvat_id=1,
             cvat_project_id=1,
-            status=TaskStatuses.completed.value,
+            status=TaskStatus.completed.value,
         )
 
         job = Job(
@@ -303,7 +303,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             cvat_id=1,
             cvat_cloudstorage_id=1,
             status=ProjectStatuses.completed.value,
-            job_type=JobTypes.image_label_binary.value,
+            job_type=TaskType.image_label_binary.value,
             escrow_address=escrow_address,
             chain_id=1234,
             bucket_url="https://test.storage.googleapis.com/",
@@ -313,7 +313,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             id=str(uuid.uuid4()),
             cvat_id=1,
             cvat_project_id=1,
-            status=TaskStatuses.completed.value,
+            status=TaskStatus.completed.value,
         )
 
         job = Job(

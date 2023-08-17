@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from src.core.types import JobTypes, ProviderType
+from src.core.types import TaskType, ProviderType
 
 
 class TaskResponse(BaseModel):
@@ -11,4 +11,4 @@ class TaskResponse(BaseModel):
     unit_size: int
     assignment_time_limit: float
     provider: ProviderType
-    task_type: JobTypes
+    task_type: TaskType

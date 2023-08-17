@@ -1,6 +1,6 @@
 from typing import List, Dict, Callable
 
-from src.core.types import JobTypes
+from src.core.types import TaskType
 
 
 def process_image_label_binary_raw_annotations(
@@ -25,10 +25,10 @@ def process_image_label_binary_raw_annotations(
 
 
 def get_annotations_handler(
-    job_type: JobTypes,
+    job_type: TaskType,
 ) -> Callable[[List[Dict], List[Dict], str, str], List[Dict]]:
     match job_type:
-        case JobTypes.image_label_binary.value:
+        case TaskType.image_label_binary.value:
             return process_image_label_binary_raw_annotations
         case _:
             raise ValueError(f"{job_type=} is not supported")

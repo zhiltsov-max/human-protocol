@@ -50,26 +50,30 @@ class LocalhostConfig:
 
 class CronConfig:
     process_job_launcher_webhooks_int = int(
-        os.environ.get("PROCESS_JOB_LAUNCHER_WEBHOOKS_INT", 3000)
+        os.environ.get("PROCESS_JOB_LAUNCHER_WEBHOOKS_INT", 30)
     )
     process_job_launcher_webhooks_chunk_size = os.environ.get(
         "PROCESS_JOB_LAUNCHER_WEBHOOKS_CHUNK_SIZE", 5
     )
     process_recording_oracle_webhooks_int = int(
-        os.environ.get("PROCESS_RECORDING_ORACLE_WEBHOOKS_INT", 3000)
+        os.environ.get("PROCESS_RECORDING_ORACLE_WEBHOOKS_INT", 30)
     )
     process_recording_oracle_webhooks_chunk_size = os.environ.get(
         "PROCESS_RECORDING_ORACLE_WEBHOOKS_CHUNK_SIZE", 5
     )
     track_completed_projects_int = int(
-        os.environ.get("TRACK_COMPLETED_PROJECTS_INT", 3000)
+        os.environ.get("TRACK_COMPLETED_PROJECTS_INT", 30)
     )
     track_completed_projects_chunk_size = os.environ.get(
         "TRACK_COMPLETED_PROJECTS_CHUNK_SIZE", 5
     )
-    track_completed_tasks_int = int(os.environ.get("TRACK_COMPLETED_TASKS_INT", 3000))
+    track_completed_tasks_int = int(os.environ.get("TRACK_COMPLETED_TASKS_INT", 30))
+    track_creating_tasks_chunk_size = os.environ.get(
+        "TRACK_CREATING_TASKS_CHUNK_SIZE", 5
+    )
+    track_creating_tasks_int = int(os.environ.get("TRACK_CREATING_TASKS_INT", 300))
 
-    retrieve_annotatons_int = int(os.environ.get("RETRIEVE_ANNOTATIONS_INT", 3000))
+    retrieve_annotations_int = int(os.environ.get("RETRIEVE_ANNOTATIONS_INT", 60))
     retrieve_annotations_chunk_size = os.environ.get(
         "RETRIEVE_ANNOTATIONS_CHUNK_SIZE", 5
     )

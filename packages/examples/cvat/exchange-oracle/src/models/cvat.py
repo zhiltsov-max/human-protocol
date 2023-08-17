@@ -1,14 +1,15 @@
 # pylint: disable=too-few-public-methods
-from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, Integer
-from sqlalchemy.orm import relationship
+from typing import List
+from sqlalchemy import Boolean, Column, String, DateTime, Enum, ForeignKey, Integer
+from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
 
 from src.core.types import Networks
 from src.core.types import (
     ProjectStatuses,
-    TaskStatuses,
+    TaskStatus,
     JobStatuses,
-    JobTypes,
+    TaskType,
 )
 from src.db import Base
 
@@ -19,7 +20,7 @@ class Project(Base):
     cvat_id = Column(Integer, unique=True, index=True, nullable=False)
     cvat_cloudstorage_id = Column(Integer, index=True, nullable=False)
     status = Column(String, Enum(ProjectStatuses), nullable=False)
-    job_type = Column(String, Enum(JobTypes), nullable=False)
+    job_type = Column(String, Enum(TaskType), nullable=False)
     escrow_address = Column(String(42), unique=True, nullable=False)
     chain_id = Column(Integer, Enum(Networks), nullable=False)
     bucket_url = Column(String, unique=True, nullable=False)
@@ -27,16 +28,14 @@ class Project(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_processed_webhook_delivery_id = Column(Integer, nullable=True)
 
-    tasks = relationship(
-        "Task",
-        back_populates="projects",
+    tasks: Mapped[List["Task"]] = relationship(
+        back_populates="project",
         cascade="all, delete",
         passive_deletes=True,
     )
 
-    jobs = relationship(
-        "Job",
-        back_populates="projects",
+    jobs: Mapped[List["Job"]] = relationship(
+        back_populates="project",
         cascade="all, delete",
         passive_deletes=True,
     )
@@ -52,20 +51,39 @@ class Task(Base):
     cvat_project_id = Column(
         Integer, ForeignKey("projects.cvat_id", ondelete="CASCADE"), nullable=False
     )
-    status = Column(String, Enum(TaskStatuses), nullable=False)
+    status = Column(String, Enum(TaskStatus), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    projects = relationship("Project", back_populates="tasks")
-    jobs = relationship(
-        "Job",
-        back_populates="tasks",
+    project: Mapped["Project"] = relationship(back_populates="tasks")
+    jobs: Mapped[List["Job"]] = relationship(
+        back_populates="task",
         cascade="all, delete",
         passive_deletes=True,
+    )
+    data_upload: Mapped["DataUpload"] = relationship(
+        back_populates="task", cascade="all, delete", passive_deletes=True
     )
 
     def __repr__(self):
         return f"Task. id={self.id}"
+
+
+class DataUpload(Base):
+    __tablename__ = "data_uploads"
+    id = Column(String, primary_key=True, index=True)
+    task_id = Column(
+        Integer,
+        ForeignKey("tasks.cvat_id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    task: Mapped["Task"] = relationship(back_populates="data_upload")
+
+    def __repr__(self):
+        return f"DataUpload. id={self.id} task={self.task_id}"
 
 
 class Job(Base):
@@ -83,8 +101,8 @@ class Job(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    tasks = relationship("Task", back_populates="jobs")
-    projects = relationship("Project", back_populates="jobs")
+    task: Mapped["Task"] = relationship(back_populates="jobs")
+    project: Mapped["Project"] = relationship(back_populates="jobs")
 
     def __repr__(self):
         return f"Job. id={self.id}"

@@ -50,7 +50,7 @@ def process_reputation_oracle_webhooks() -> None:
                         response.raise_for_status()
                     db_service.handle_webhook_success(session, webhook.id)
                 except Exception as e:
-                    logger.error(
+                    logger.exception(
                         f"{LOG_MODULE} Webhook: {webhook.id} failed during execution. Error {e}"
                     )
                     db_service.handle_webhook_fail(session, webhook.id)
@@ -58,4 +58,4 @@ def process_reputation_oracle_webhooks() -> None:
         logger.info(f"{LOG_MODULE} Finishing cron job")
         return None
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)

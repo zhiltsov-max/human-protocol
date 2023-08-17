@@ -18,7 +18,7 @@ def create_webhook(
     s3_url: str,
     type: OracleWebhookTypes,
     signature: str,
-) -> id:
+) -> int:
     """
     Creates a webhook in a database
     """
@@ -60,7 +60,7 @@ def get_pending_webhooks(
 
 
 def update_webhook_status(
-    session: Session, webhook_id: id, status: OracleWebhookStatuses
+    session: Session, webhook_id: int, status: OracleWebhookStatuses
 ) -> None:
     if status not in OracleWebhookStatuses.__members__.values():
         raise ValueError(f"{status} is not available")
@@ -68,7 +68,7 @@ def update_webhook_status(
     session.execute(upd)
 
 
-def handle_webhook_success(session: Session, webhook_id: id) -> None:
+def handle_webhook_success(session: Session, webhook_id: int) -> None:
     upd = (
         update(Webhook)
         .where(Webhook.id == webhook_id)
@@ -77,7 +77,7 @@ def handle_webhook_success(session: Session, webhook_id: id) -> None:
     session.execute(upd)
 
 
-def handle_webhook_fail(session: Session, webhook_id: id) -> None:
+def handle_webhook_fail(session: Session, webhook_id: int) -> None:
     upd = (
         update(Webhook)
         .where(Webhook.id == webhook_id)

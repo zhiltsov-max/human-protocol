@@ -1,23 +1,34 @@
-from typing import Type
+from enum import Enum
+from typing import Optional, Type, Union
 from pydantic import BaseModel
 
 from src.core.types import (
+    ExchangeOracleEventType,
     JobLauncherEventType,
     OracleWebhookTypes,
     RecordingOracleEventType,
 )
 
 
+EventTypeTag = Union[
+    ExchangeOracleEventType,
+    JobLauncherEventType,
+    RecordingOracleEventType,
+]
+
+
 class OracleEvent(BaseModel):
-    pass
+    @classmethod
+    def get_type(cls) -> EventTypeTag:
+        return get_type_tag_for_event_class(cls)
 
 
 class JobLauncherEvent_EscrowCreated(OracleEvent):
-    pass
+    pass  # escrow is enough
 
 
 class JobLauncherEvent_EscrowCanceled(OracleEvent):
-    pass
+    pass  # escrow is enough
 
 
 class RecordingOracleEvent_TaskCompleted(OracleEvent):
@@ -29,20 +40,46 @@ class RecordingOracleEvent_TaskRejected(OracleEvent):
     rejected_job_ids: list[int]
 
 
-def get_class_for_event_type(event_type: str) -> Type[OracleEvent]:
-    mapping = {
-        JobLauncherEventType.escrow_created: JobLauncherEvent_EscrowCreated,
-        JobLauncherEventType.escrow_canceled: JobLauncherEvent_EscrowCanceled,
-        RecordingOracleEventType.task_completed: RecordingOracleEvent_TaskCompleted,
-        RecordingOracleEventType.task_rejected: RecordingOracleEvent_TaskRejected,
-    }
-    mapping = {str(k): v for k, v in mapping.items()}
+class ExchangeOracleEvent_TaskCreationFailed(OracleEvent):
+    # no task_id, escrow is enough
+    reason: str
 
-    return mapping[event_type]
+
+class ExchangeOracleEvent_TaskFinished(OracleEvent):
+    task_id: int
+    s3_url: str
+
+
+_event_type_map = {
+    JobLauncherEventType.escrow_created: JobLauncherEvent_EscrowCreated,
+    JobLauncherEventType.escrow_canceled: JobLauncherEvent_EscrowCanceled,
+    RecordingOracleEventType.task_completed: RecordingOracleEvent_TaskCompleted,
+    RecordingOracleEventType.task_rejected: RecordingOracleEvent_TaskRejected,
+    ExchangeOracleEventType.task_creation_failed: ExchangeOracleEvent_TaskCreationFailed,
+    ExchangeOracleEventType.task_finished: ExchangeOracleEvent_TaskFinished,
+}
+
+
+def get_class_for_event_type(event_type: str) -> Type[OracleEvent]:
+    event_class = next((v for k, v in _event_type_map.items() if k == event_type), None)
+
+    if not event_class:
+        raise KeyError(f"Unknown event type {event_type}")
+
+    return event_class
+
+
+def get_type_tag_for_event_class(event_class: Type[OracleEvent]) -> EventTypeTag:
+    event_type = next((k for k, v in _event_type_map.items() if v == event_class), None)
+
+    if not event_type:
+        raise KeyError(f"Unknown event class {event_class}")
+
+    return event_type
 
 
 def parse_event(
-    sender: OracleWebhookTypes, event_type: str, event_data: dict
+    sender: OracleWebhookTypes, event_type: str, event_data: Optional[dict] = None
 ) -> OracleEvent:
     if sender == OracleWebhookTypes.job_launcher:
         if not event_type in JobLauncherEventType:
@@ -54,7 +91,7 @@ def parse_event(
         assert False, f"Unknown event sender type '{sender}'"
 
     event_class = get_class_for_event_type(event_type)
-    return event_class.parse_obj(event_data)
+    return event_class.parse_obj(event_data or {})
 
 
 def validate_event(sender: OracleWebhookTypes, event_type: str, event_data: dict):
