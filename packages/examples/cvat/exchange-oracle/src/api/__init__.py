@@ -5,7 +5,7 @@ from src.schemas import ValidationErrorResponse, ResponseError, MetaResponse
 from src.core.config import Config
 
 from src.api.cvat import router as cvat_router
-from src.api.service import router as service_router
+from src.api.exchange import router as service_router
 from src.api.webhook import router as webhook_router
 
 

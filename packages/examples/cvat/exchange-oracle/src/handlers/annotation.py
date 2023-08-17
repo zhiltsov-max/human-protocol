@@ -1,6 +1,6 @@
 from typing import List, Dict, Callable
 
-from src.core.constants import JobTypes
+from src.core.types import JobTypes
 
 
 def process_image_label_binary_raw_annotations(

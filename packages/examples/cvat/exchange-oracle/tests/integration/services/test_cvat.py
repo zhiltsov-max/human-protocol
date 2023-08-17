@@ -2,8 +2,8 @@ import unittest
 import uuid
 from src.db import SessionLocal
 
-from src.core.constants import Networks
-from src.core.constants import (
+from src.core.types import Networks
+from src.core.types import (
     JobStatuses,
     TaskStatuses,
     ProjectStatuses,

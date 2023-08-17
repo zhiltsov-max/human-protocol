@@ -3,8 +3,8 @@ from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.core.constants import Networks
-from src.core.constants import (
+from src.core.types import Networks
+from src.core.types import (
     ProjectStatuses,
     TaskStatuses,
     JobStatuses,

@@ -3,9 +3,9 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 from sqlalchemy.sql import select
-from src.core.constants import Networks
+from src.core.types import Networks
 from src.db import SessionLocal
-from src.core.constants import (
+from src.core.types import (
     OracleWebhookStatuses,
     OracleWebhookSenderType,
 )

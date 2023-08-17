@@ -1,8 +1,8 @@
 from typing import Optional
 from src.db import SessionLocal
 
-from src.core.constants import ProviderType
-from src.schemas import service as service_api
+from src.core.types import ProviderType
+from src.schemas import exchange as service_api
 from src.services import cvat as cvat_db_service
 
 

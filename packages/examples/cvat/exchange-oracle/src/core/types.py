@@ -1,7 +1,7 @@
 from enum import Enum
 
 from src.core.config import Config
-from src.utils.types import BetterEnumMeta
+from src.utils.enums import BetterEnumMeta
 
 
 class Networks(int, Enum, metaclass=BetterEnumMeta):
@@ -66,9 +66,5 @@ class OracleWebhookStatuses(str, Enum, metaclass=BetterEnumMeta):
     failed = "failed"
 
 
-class ProviderType(str, Enum):
+class ProviderType(str, Enum, metaclass=BetterEnumMeta):
     CVAT = "cvat"
-
-
-class TaskType(str, Enum):
-    image_annotation = "image_annotation"

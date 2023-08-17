@@ -2,7 +2,7 @@ from typing import Union
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from src.chain.escrow import validate_escrow
-from src.core.constants import OracleWebhookTypes
+from src.core.types import OracleWebhookTypes
 from src.db import SessionLocal
 from src.schemas.webhook import OracleWebhook, OracleWebhookResponse
 from src.services.webhook import create_webhook

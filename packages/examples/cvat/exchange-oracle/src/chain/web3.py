@@ -4,7 +4,7 @@ from web3.providers.rpc import HTTPProvider
 
 from eth_account.messages import encode_defunct
 
-from src.core.constants import Networks
+from src.core.types import Networks
 from src.core.config import Config
 
 

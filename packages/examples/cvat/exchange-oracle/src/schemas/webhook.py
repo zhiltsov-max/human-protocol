@@ -1,6 +1,8 @@
 from pydantic import BaseModel, validator
 from src.chain.web3 import validate_address
-from src.core.constants import Networks
+from src.core.types import Networks
+
+from src.core.types import JobLauncherEventType
 
 
 class OracleWebhook(BaseModel):
@@ -19,6 +21,8 @@ class OracleWebhook(BaseModel):
             "example": {
                 "escrow_address": "0x199c44cfa6a84554ac01f3e3b01d7cfce38a75eb",
                 "chain_id": 80001,
+                "event_type": JobLauncherEventType.escrow_created.value,
+                "event_data": {},
             }
         }
 

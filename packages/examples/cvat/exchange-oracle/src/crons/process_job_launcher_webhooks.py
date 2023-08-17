@@ -7,7 +7,7 @@ from src.cvat.create_job import job_creation_process
 from src.cvat.revert_job import revert_job_creation
 from src.chain.escrow import get_escrow_manifest, validate_escrow
 
-from src.core.constants import OracleWebhookTypes
+from src.core.types import OracleWebhookTypes
 import src.services.webhook as db_service
 
 

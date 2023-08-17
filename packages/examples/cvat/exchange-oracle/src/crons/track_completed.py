@@ -3,7 +3,7 @@ import logging
 from src.db import SessionLocal
 from src.core.config import CronConfig
 
-from src.core.constants import ProjectStatuses, TaskStatuses, JobStatuses
+from src.core.types import ProjectStatuses, TaskStatuses, JobStatuses
 import src.services.cvat as cvat_service
 
 LOG_MODULE = "[cron][cvat]"

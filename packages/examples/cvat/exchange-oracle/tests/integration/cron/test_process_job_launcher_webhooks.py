@@ -4,9 +4,9 @@ from unittest.mock import patch
 from src.models.cvat import Project
 
 from sqlalchemy.sql import select
-from src.core.constants import Networks
+from src.core.types import Networks
 from src.db import SessionLocal
-from src.core.constants import (
+from src.core.types import (
     OracleWebhookStatuses,
     OracleWebhookSenderType,
 )

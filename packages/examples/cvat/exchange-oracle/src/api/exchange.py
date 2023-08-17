@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Query
 from typing import Optional
 
-from src.usecases import get_available_tasks
-from src.schemas.service import TaskResponse
+from src.services.exchange import get_available_tasks
+from src.schemas.exchange import TaskResponse
 
 
 router = APIRouter()

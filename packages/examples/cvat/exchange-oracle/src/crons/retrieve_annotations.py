@@ -5,7 +5,7 @@ import src.services.cvat as cvat_db_service
 import src.services.webhook as oracle_db_service
 from human_protocol_sdk.storage import Credentials, StorageClient
 from src.core.config import CronConfig, StorageConfig
-from src.core.constants import OracleWebhookTypes, ProjectStatuses
+from src.core.types import OracleWebhookTypes, ProjectStatuses
 from src.db import SessionLocal
 from src.handlers.annotation import get_annotations_handler
 from src.utils.helpers import prepare_signature

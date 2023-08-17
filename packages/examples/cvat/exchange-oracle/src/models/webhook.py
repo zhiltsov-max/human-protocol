@@ -3,12 +3,12 @@ from sqlalchemy import JSON, Column, String, DateTime, Enum, Integer, UniqueCons
 from sqlalchemy.sql import func
 from sqlalchemy.event import listens_for
 
-from src.core.constants import (
+from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )
 from src.db import Base
-from src.core.constants import Networks
+from src.core.types import Networks
 
 
 class Webhook(Base):

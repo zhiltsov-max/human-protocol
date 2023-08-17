@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 
-from src.core.constants import ProjectStatuses, TaskStatuses, JobStatuses
+from src.core.types import ProjectStatuses, TaskStatuses, JobStatuses
 from src.models.cvat import Project, Task, Job
 
 

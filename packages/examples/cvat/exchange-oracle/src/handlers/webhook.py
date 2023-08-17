@@ -1,5 +1,5 @@
 from src.db import SessionLocal
-from src.core.constants import EventTypes
+from src.core.types import EventTypes
 
 import src.services.cvat as cvat_service
 

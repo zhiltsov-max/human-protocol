@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from src.core.constants import JobTypes, ProviderType
+from src.core.types import JobTypes, ProviderType
 
 
 class TaskResponse(BaseModel):

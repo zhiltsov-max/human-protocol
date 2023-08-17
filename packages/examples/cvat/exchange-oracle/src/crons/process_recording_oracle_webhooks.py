@@ -6,7 +6,7 @@ from src.core.config import CronConfig
 
 from src.chain.kvstore import get_recording_oracle_url
 
-from src.core.constants import OracleWebhookTypes
+from src.core.types import OracleWebhookTypes
 from src.utils.helpers import prepare_recording_oracle_webhook_body
 
 import src.services.webhook as db_service

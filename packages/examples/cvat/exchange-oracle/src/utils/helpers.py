@@ -2,8 +2,8 @@ from typing import Dict
 from urllib.parse import urlparse
 
 from src.chain.web3 import sign_message
-from src.core.constants import Networks
-from src.core.constants import CvatLabelTypes, JobTypes, Providers
+from src.core.types import Networks
+from src.core.types import CvatLabelTypes, JobTypes, Providers
 
 type_mapping = {JobTypes.image_label_binary: CvatLabelTypes.tag.value}
 

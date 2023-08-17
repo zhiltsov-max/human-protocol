@@ -2,15 +2,15 @@ import unittest
 import uuid
 
 from src.db import SessionLocal
-from src.core.constants import Networks
-from src.core.constants import (
+from src.core.types import Networks
+from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )
 from src.models.webhook import Webhook
 from sqlalchemy.exc import IntegrityError
 
-from src.core.constants import (
+from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )

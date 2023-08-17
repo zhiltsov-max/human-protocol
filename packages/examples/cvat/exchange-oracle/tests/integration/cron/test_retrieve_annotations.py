@@ -3,19 +3,19 @@ import uuid
 from unittest.mock import patch
 
 from sqlalchemy.sql import select
-from src.core.constants import Networks
+from src.core.types import Networks
 from src.db import SessionLocal
 from src.crons.retrieve_annotations import retrieve_annotations
 from src.models.webhook import Webhook
 from tests.unit.helpers.predefined_annotations import raw_binary_annotations
-from src.core.constants import (
+from src.core.types import (
     ProjectStatuses,
     JobTypes,
     TaskStatuses,
     JobStatuses,
 )
 from src.models.cvat import Project, Task, Job
-from src.core.constants import (
+from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )

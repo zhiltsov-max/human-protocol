@@ -2,9 +2,9 @@ import unittest
 import uuid
 
 from sqlalchemy.sql import select
-from src.core.constants import Networks
+from src.core.types import Networks
 from src.db import SessionLocal
-from src.core.constants import JobTypes, ProjectStatuses, TaskStatuses
+from src.core.types import JobTypes, ProjectStatuses, TaskStatuses
 from src.crons.track_completed import track_completed_projects
 from src.models.cvat import Project, Task
 
