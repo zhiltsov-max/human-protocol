@@ -1,4 +1,5 @@
 import logging
+from src.core.events import ExchangeOracleEvent_TaskCreationFailed
 
 from src.db import SessionLocal
 
@@ -6,7 +7,7 @@ from src.core.config import CronConfig
 from src.core.types import OracleWebhookTypes, JobLauncherEventType
 
 from src import cvat
-from src.chain.escrow import get_escrow_manifest, validate_escrow
+from src.chain.escrow import validate_escrow
 
 from src.models.webhook import Webhook
 import src.services.webhook as db_service
@@ -34,7 +35,9 @@ def process_job_launcher_webhooks() -> None:
 
             for webhook in webhooks:
                 try:
-                    handle_job_launcher_event(webhook)
+                    handle_job_launcher_event(
+                        webhook, db_session=session, logger=logger
+                    )
 
                     db_service.inbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
@@ -49,36 +52,54 @@ def process_job_launcher_webhooks() -> None:
         logger.exception(e)
 
 
-def handle_job_launcher_event(webhook: Webhook):
+def handle_job_launcher_event(
+    webhook: Webhook, *, db_session: SessionLocal, logger: logging.Logger
+):
     assert webhook.type == OracleWebhookTypes.job_launcher
 
     match webhook.event_type:
         case JobLauncherEventType.escrow_created:
             try:
+                # TODO: enable validation
                 # validate_escrow(webhook.chain_id, webhook.escrow_address)
 
-                # TODO: remove mock
-                # manifest = get_escrow_manifest(webhook.chain_id, webhook.escrow_address)
-                manifest = {
-                    "data": {
-                        "host_url": "http://DOC-EXAMPLE-BUCKET1.eu.s3.eu-west-1.amazonaws.com",
-                        "data_path": "data/dir/",
-                    },
-                    "task": {"labels": [{"name": "cat"}], "type": "IMAGE_BOXES"},
-                    "validation": {
-                        "min_quality": 0.9,
-                        "gt_path": "path/to/coco_gt.zip",
-                    },
-                }
+                logger.info(
+                    f"{LOG_MODULE} Creating a new CVAT project "
+                    f"(escrow_address={webhook.escrow_address})"
+                )
 
-                cvat.create_task(webhook.escrow_address, webhook.chain_id, manifest)
+                cvat.create_task(webhook.escrow_address, webhook.chain_id)
 
-            except Exception:
-                cvat.remove_task(webhook.escrow_address)
+            except Exception as ex:
+                try:
+                    cvat.remove_task(webhook.escrow_address)
+                except Exception as ex_remove:
+                    logger.exception(ex_remove)
+
+                db_service.outbox.create_webhook(
+                    session=db_session,
+                    escrow_address=webhook.escrow_address,
+                    chain_id=webhook.chain_id,
+                    type=OracleWebhookTypes.exchange_oracle,
+                    event=ExchangeOracleEvent_TaskCreationFailed(reason=str(ex)),
+                )
+
                 raise
 
         case JobLauncherEventType.escrow_canceled:
-            raise NotImplementedError
+            try:
+                # TODO: enable validation
+                # validate_escrow(webhook.chain_id, webhook.escrow_address)
+
+                logger.info(
+                    f"{LOG_MODULE} Removing a CVAT project "
+                    f"(escrow_address={webhook.escrow_address})"
+                )
+
+                cvat.remove_task(webhook.escrow_address)
+
+            except Exception as ex:
+                raise
 
         case _:
             assert False, f"Unknown job launcher event {webhook.event_type}"

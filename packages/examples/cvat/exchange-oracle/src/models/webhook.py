@@ -14,7 +14,7 @@ from src.core.types import Networks
 class Webhook(Base):
     __tablename__ = "webhooks"
     id = Column(String, primary_key=True, index=True)
-    signature = Column(String, unique=True, index=True, nullable=False)
+    signature = Column(String, unique=True, index=True)
     escrow_address = Column(String(42), nullable=False)
     chain_id = Column(Integer, Enum(Networks), nullable=False)
     type = Column(String, Enum(OracleWebhookTypes), nullable=False)
@@ -32,7 +32,9 @@ class Webhook(Base):
     direction = Column(String, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("escrow_address", "type", name="_escrow_address_type_uc"),
+        UniqueConstraint(
+            "escrow_address", "type", "event_type", name="_escrow_address_type_uc"
+        ),
     )
 
     def __repr__(self):

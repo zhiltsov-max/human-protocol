@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, validator
 from src.chain.web3 import validate_address
 from src.core.types import Networks
@@ -9,7 +10,7 @@ class OracleWebhook(BaseModel):
     escrow_address: str
     chain_id: Networks
     event_type: str
-    event_data: dict
+    event_data: Optional[dict] = None
 
     @validator("escrow_address", allow_reuse=True)
     def validate_escrow_(cls, value):

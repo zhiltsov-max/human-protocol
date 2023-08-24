@@ -12,7 +12,6 @@ from src.db import SessionLocal
 from src.core.config import CronConfig, StorageConfig
 
 from src.core.types import (
-    ExchangeOracleEventType,
     OracleWebhookTypes,
     ProjectStatuses,
     TaskStatus,
@@ -22,7 +21,6 @@ from src.handlers.annotation import get_annotations_handler
 import src.services.cvat as cvat_db_service
 import src.services.webhook as oracle_db_service
 import src.cvat.api_calls as cvat_api
-from src.utils.helpers import prepare_signature
 
 
 LOG_MODULE = "[cron][cvat]"
@@ -154,6 +152,7 @@ def retrieve_annotations() -> None:
                     project.chain_id,
                     OracleWebhookTypes.recording_oracle.value,
                     event=ExchangeOracleEvent_TaskFinished(
+                        # TODO: pass implicitly through escrow?
                         s3_url=f"{StorageConfig.bucket_url()}{files[0]['key']}"
                     ),
                 )
@@ -170,12 +169,12 @@ def retrieve_annotations() -> None:
 
 def track_task_creation() -> None:
     """
-    Checks task creation status to report failed tasks.
+    Checks task creation status to report failed tasks and continue task creation process.
     """
 
-    # TODO: add load balancing (e.g. round-robin queue)
+    # TODO: maybe add load balancing (e.g. round-robin queue, shuffling)
 
-    logger_prefix = f"{LOG_MODULE}[track_creating_tasks]"
+    logger_prefix = f"{LOG_MODULE}[track_task_creation]"
 
     try:
         logger.info(f"{logger_prefix} Starting cron job")
@@ -208,7 +207,7 @@ def track_task_creation() -> None:
                 elif status == cvat_api.UploadStatus.FINISHED:
                     completed.append(upload)
 
-            cvat_db_service.finish_uploads(session, completed + failed)
+            cvat_db_service.finish_uploads(session, failed + completed)
 
         logger.info(f"{logger_prefix} Finishing cron job")
 

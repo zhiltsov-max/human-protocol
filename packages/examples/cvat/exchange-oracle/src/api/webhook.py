@@ -12,17 +12,19 @@ router = APIRouter()
 
 
 @router.post(
-    "/job-launcher",
-    description="Consumes a webhook from a job launcher",
+    "/oracle-webhook",
+    description="Consumes a webhook from an oracle",
 )
-async def job_launcher_webhook(
+async def oracle_webhook(
     webhook: OracleWebhook,
     request: Request,
     human_signature: Union[str, None] = Header(default=None),
 ):
     try:
-        await validate_webhook_signature(request, human_signature, webhook)
-        validate_escrow(webhook.chain_id, webhook.escrow_address)
+        await request.body()
+        # TODO: restore
+        # await validate_webhook_signature(request, human_signature, webhook)
+        # validate_escrow(webhook.chain_id, webhook.escrow_address)
 
         with SessionLocal.begin() as session:
             webhook_id = oracle_db_service.inbox.create_webhook(

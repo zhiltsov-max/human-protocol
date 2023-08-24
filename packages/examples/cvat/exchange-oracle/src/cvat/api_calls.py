@@ -9,26 +9,41 @@ from typing import Dict, List, Optional
 from src.core.config import Config
 from cvat_sdk.api_client import Configuration, ApiClient, models, exceptions
 from cvat_sdk.core.helpers import get_paginated_collection
+from src.core.types import JobStatuses
 
 from src.utils.enums import BetterEnumMeta
 
-configuration = Configuration(
-    host=Config.cvat_config.cvat_url,
-    username=Config.cvat_config.cvat_admin,
-    password=Config.cvat_config.cvat_admin_pass,
-)
+_ORG_SLUG_HEADER = "X-Organization"
 
 
-def create_cloudstorage(provider: str, bucket_name: str) -> Dict:
+def get_api_client() -> ApiClient:
+    configuration = Configuration(
+        host=Config.cvat_config.cvat_url,
+        username=Config.cvat_config.cvat_admin,
+        password=Config.cvat_config.cvat_admin_pass,
+    )
+
+    headers = (
+        {_ORG_SLUG_HEADER: Config.cvat_config.cvat_org_slug}
+        if Config.cvat_config.cvat_org_slug
+        else {}
+    )
+
+    return ApiClient(configuration=configuration, headers=headers)
+
+
+def create_cloudstorage(
+    provider: str, bucket_host: str, bucket_name: str
+) -> models.CloudStorageRead:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         cloud_storage_write_request = models.CloudStorageWriteRequest(
             provider_type=models.ProviderTypeEnum(provider),
             resource=bucket_name,
             display_name=bucket_name,
             credentials_type=models.CredentialsTypeEnum("ANONYMOUS_ACCESS"),
             description=bucket_name,
-            manifests=["manifest.jsonl"],
+            specific_attributes=f"endpoint_url={bucket_host}",
         )  # CloudStorageWriteRequest
         try:
             (data, response) = api_client.cloudstorages_api.create(
@@ -41,9 +56,9 @@ def create_cloudstorage(provider: str, bucket_name: str) -> Dict:
             raise
 
 
-def create_project(escrow_address: str, labels: list) -> Dict:
+def create_project(escrow_address: str, labels: list) -> models.ProjectRead:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         project_write_request = models.ProjectWriteRequest(
             name=escrow_address,
             labels=labels,
@@ -57,12 +72,12 @@ def create_project(escrow_address: str, labels: list) -> Dict:
             raise
 
 
-def setup_cvat_webhooks(project_id: int) -> Dict:
+def setup_cvat_webhooks(project_id: int) -> models.WebhookRead:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         webhook_write_request = models.WebhookWriteRequest(
             target_url=Config.cvat_config.cvat_incoming_webhooks_url,
-            description="Update",
+            description="Exchange Oracle notification",
             type=models.WebhookType("project"),
             content_type=models.WebhookContentType("application/json"),
             secret=Config.cvat_config.cvat_webhook_secret,
@@ -84,14 +99,14 @@ def setup_cvat_webhooks(project_id: int) -> Dict:
             raise
 
 
-def create_task(project_id: int, escrow_address: str) -> Dict:
+def create_task(project_id: int, escrow_address: str) -> models.TaskRead:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         task_write_request = models.TaskWriteRequest(
             name=escrow_address,
             project_id=project_id,
             owner_id=Config.cvat_config.cvat_admin_user_id,
-            overlap=Config.cvat_config.cvat_job_overlap,
+            overlap=0,
             segment_size=Config.cvat_config.cvat_job_segment_size,
         )
         try:
@@ -103,15 +118,31 @@ def create_task(project_id: int, escrow_address: str) -> Dict:
             raise
 
 
-def get_cloudstorage_content(cloudstorage_id: int) -> List[str]:
+def create_gt_job(task_id: int, size: int) -> models.JobRead:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
+        job_write_request = models.JobWriteRequest(
+            task_id=task_id,
+            frame_selection_method="random_uniform",
+            size=size,
+        )
+        try:
+            (job, response) = api_client.jobs_api.create(job_write_request)
+            return job
+
+        except exceptions.ApiException as e:
+            logger.exception(f"Exception when calling tasks_api.create: {e}\n")
+            raise
+
+
+def get_cloudstorage_contents(cloudstorage_id: int) -> List[str]:
+    logger = logging.getLogger("app")
+    with get_api_client() as api_client:
         try:
             (content_data, response) = api_client.cloudstorages_api.retrieve_content(
                 cloudstorage_id
             )
-            # (data, response) = api_client.cloudstorages_api.retrieve(cloudstorage_id) Not working in SDK
-            return content_data + ["manifest.jsonl"]
+            return content_data
         except exceptions.ApiException as e:
             logger.exception(
                 f"Exception when calling cloudstorages_api.retrieve_content: {e}\n"
@@ -119,21 +150,35 @@ def get_cloudstorage_content(cloudstorage_id: int) -> List[str]:
             raise
 
 
-def put_task_data(task_id: int, cloudstorage_id: int) -> None:
+def put_task_data(
+    task_id: int,
+    cloudstorage_id: int,
+    *,
+    filenames: Optional[list[str]] = None,
+    sort_images: bool = True,
+) -> None:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
-        content = get_cloudstorage_content(cloudstorage_id)
+
+    with get_api_client() as api_client:
+        kwargs = {}
+        if filenames:
+            kwargs["server_files"] = filenames
+        else:
+            kwargs["filename_pattern"] = "*"
+
         data_request = models.DataRequest(
             chunk_size=Config.cvat_config.cvat_job_segment_size,
             cloud_storage_id=cloudstorage_id,
             image_quality=Config.cvat_config.cvat_default_image_quality,
-            server_files=content,
             use_cache=True,
             use_zip_chunks=True,
-            sorting_method="lexicographical",
+            sorting_method="lexicographical" if sort_images else "predefined",
+            **kwargs,
         )
         try:
-            (_, response) = api_client.tasks_api.create_data(task_id, data_request)
+            (_, response) = api_client.tasks_api.create_data(
+                task_id, data_request=data_request
+            )
             return None
 
         except exceptions.ApiException as e:
@@ -141,11 +186,13 @@ def put_task_data(task_id: int, cloudstorage_id: int) -> None:
             raise
 
 
-def fetch_task_jobs(task_id: int) -> List[Dict]:
+def fetch_task_jobs(task_id: int) -> List[models.JobRead]:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         try:
-            (data, response) = api_client.jobs_api.list(task_id=task_id)
+            data = get_paginated_collection(
+                api_client.jobs_api.list_endpoint, task_id=task_id
+            )
             return data
         except exceptions.ApiException as e:
             logger.exception(f"Exception when calling JobsApi.list: {e}\n")
@@ -154,7 +201,7 @@ def fetch_task_jobs(task_id: int) -> List[Dict]:
 
 def get_job_annotations(cvat_project_id: int) -> Dict:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         try:
             for _ in range(5):
                 (_, response) = api_client.jobs_api.retrieve_annotations(
@@ -179,7 +226,7 @@ def get_job_annotations(cvat_project_id: int) -> Dict:
 
 def delete_project(cvat_id: int) -> None:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         try:
             api_client.projects_api.destroy(cvat_id)
         except exceptions.ApiException as e:
@@ -189,7 +236,7 @@ def delete_project(cvat_id: int) -> None:
 
 def delete_cloudstorage(cvat_id: int) -> None:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         try:
             api_client.cloudstorages_api.destroy(cvat_id)
         except exceptions.ApiException as e:
@@ -199,12 +246,13 @@ def delete_cloudstorage(cvat_id: int) -> None:
             raise
 
 
-def fetch_projects(assignee: str) -> List[Dict]:
+def fetch_projects(assignee: str = "") -> List[models.ProjectRead]:
     logger = logging.getLogger("app")
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         try:
             return get_paginated_collection(
-                api_client.projects_api.list_endpoint, assignee="", return_json=True
+                api_client.projects_api.list_endpoint,
+                **(dict(assignee=assignee) if assignee else {}),
             )
         except exceptions.ApiException as e:
             logger.exception(f"Exception when calling ProjectsApi.list(): {e}\n")
@@ -221,7 +269,7 @@ class UploadStatus(str, Enum, metaclass=BetterEnumMeta):
 def get_task_upload_status(cvat_id: int) -> Optional[UploadStatus]:
     logger = logging.getLogger("app")
 
-    with ApiClient(configuration) as api_client:
+    with get_api_client() as api_client:
         try:
             (status, _) = api_client.tasks_api.retrieve_status(cvat_id)
             return UploadStatus[status.state.value]
@@ -230,4 +278,27 @@ def get_task_upload_status(cvat_id: int) -> Optional[UploadStatus]:
                 return None
 
             logger.exception(f"Exception when calling ProjectsApi.list(): {e}\n")
+            raise
+
+
+def put_job_annotations(job_id: int, storage_id: int, path: str) -> str:
+    logger = logging.getLogger("app")
+
+    with get_api_client() as api_client:
+        try:
+            (_, response) = api_client.jobs_api.create_annotations(
+                job_id,
+                cloud_storage_id=storage_id,
+                use_default_location=False,
+                location=path,
+                format="COCO 1.0",
+            )
+            return response.data["rq_id"]
+        except exceptions.ApiException as e:
+            if e.status == 404:
+                return None
+
+            logger.exception(
+                f"Exception when calling JobsApi.create_annotations(): {e}\n"
+            )
             raise

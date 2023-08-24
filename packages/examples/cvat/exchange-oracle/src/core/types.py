@@ -13,6 +13,7 @@ class Networks(int, Enum, metaclass=BetterEnumMeta):
 class CvatEventTypes(str, Enum, metaclass=BetterEnumMeta):
     update_job = "update:job"
     create_job = "create:job"
+    ping = "ping"
 
 
 class ProjectStatuses(str, Enum, metaclass=BetterEnumMeta):

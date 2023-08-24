@@ -7,7 +7,9 @@ load_dotenv()
 
 
 def str_to_bool(val: str) -> bool:
-    return val is True or val == "True"
+    from distutils.util import strtobool
+
+    return val is True or strtobool(val)
 
 
 class Postgres:
@@ -84,6 +86,7 @@ class CvatConfig:
     cvat_admin = os.environ.get("CVAT_ADMIN", "admin")
     cvat_admin_pass = os.environ.get("CVAT_ADMIN_PASS", "admin")
     cvat_admin_user_id = int(os.environ.get("CVAT_ADMIN_USER_ID", 1))
+    cvat_org_slug = os.environ.get("CVAT_ORG_SLUG", "")
 
     cvat_job_overlap = int(os.environ.get("CVAT_JOB_OVERLAP", 0))
     cvat_job_segment_size = int(os.environ.get("CVAT_JOB_SEGMENT_SIZE", 150))
@@ -108,6 +111,13 @@ class StorageConfig:
         )
 
 
+class FeaturesConfig:
+    enable_custom_cloud_host = str_to_bool(
+        os.environ.get("ENABLE_CUSTOM_CLOUD_HOST", "no")
+    )
+    "Allows using a custom host in manifest bucket urls"
+
+
 class Config:
     port = int(os.environ.get("PORT", 8000))
     environment = os.environ.get("ENVIRONMENT", "development")
@@ -123,3 +133,4 @@ class Config:
     cron_config = CronConfig
     cvat_config = CvatConfig
     storage_config = StorageConfig
+    features = FeaturesConfig

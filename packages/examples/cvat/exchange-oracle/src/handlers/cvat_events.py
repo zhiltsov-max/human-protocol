@@ -1,5 +1,5 @@
 from src.db import SessionLocal
-from src.core.types import CvatEventTypes
+from src.core.types import CvatEventTypes, JobStatuses
 
 import src.services.cvat as cvat_service
 
@@ -13,10 +13,10 @@ def handle_update_job_event(payload: dict) -> None:
                 payload.job["id"],
                 payload.job["task_id"],
                 payload.job["project_id"],
-                payload.job["assignee"]["username"]
-                if payload.job["assignee"] is not None
+                assignee=payload.job["assignee"]["username"]
+                if payload.job["assignee"]
                 else "",
-                payload.job["state"],
+                status=JobStatuses[payload.job["state"]],
             )
         else:
             if "assignee" in payload.before_update:
@@ -27,22 +27,25 @@ def handle_update_job_event(payload: dict) -> None:
                 )
                 cvat_service.update_job_assignee(session, job.id, assignee)
             if "state" in payload.before_update:
-                cvat_service.update_job_status(session, job.id, payload.job["state"])
+                cvat_service.update_job_status(
+                    session, job.id, JobStatuses[payload.job["state"]]
+                )
 
 
 def handle_create_job_event(payload: dict) -> None:
     with SessionLocal.begin() as session:
         job = cvat_service.get_job_by_cvat_id(session, payload.job["id"])
+
         if not job:
             cvat_service.create_job(
                 session,
                 payload.job["id"],
                 payload.job["task_id"],
                 payload.job["project_id"],
-                payload.job["assignee"]["username"]
-                if payload.job["assignee"] is not None
+                assignee=payload.job["assignee"]["username"]
+                if payload.job["assignee"]
                 else "",
-                payload.job["state"],
+                status=JobStatuses[payload.job["state"]],
             )
 
 
@@ -52,3 +55,5 @@ def cvat_webhook_handler(cvat_webhook: dict) -> None:
             handle_update_job_event(cvat_webhook)
         case CvatEventTypes.create_job.value:
             handle_create_job_event(cvat_webhook)
+        case CvatEventTypes.ping.value:
+            pass

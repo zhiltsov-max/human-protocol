@@ -210,8 +210,8 @@ def create_job(
     cvat_id: int,
     cvat_task_id: int,
     cvat_project_id: int,
-    assignee: str,
-    status: JobStatuses,
+    assignee: str = "",
+    status: JobStatuses = JobStatuses.new,
 ) -> int:
     """
     Create a job from CVAT.
