@@ -3,7 +3,7 @@ from ast import literal_eval
 from hashlib import sha256
 
 from fastapi import HTTPException, Request
-from src.core.config import CvatConfig
+from src.core.config import Config
 from src.chain.escrow import get_job_launcher_address
 from src.chain.web3 import recover_signer
 
@@ -29,9 +29,16 @@ async def validate_cvat_signature(request: Request, x_signature_256: str):
     signature = (
         "sha256="
         + hmac.new(
-            CvatConfig.cvat_webhook_secret.encode("utf-8"), data, digestmod=sha256
+            Config.cvat_config.cvat_webhook_secret.encode("utf-8"),
+            data,
+            digestmod=sha256,
         ).hexdigest()
     )
 
     if not hmac.compare_digest(x_signature_256, signature):
+        raise HTTPException(status_code=403, detail="Signature doesn't match")
+
+
+async def validate_human_app_signature(signature: str):
+    if not signature == Config.human_app_config.signature:
         raise HTTPException(status_code=403, detail="Signature doesn't match")

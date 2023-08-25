@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 
 import src.log
-from src.api import init_api
+from src.endpoints import init_api
 from src.error_handlers import setup_error_handlers
 from src.cron import setup_cron_jobs
 from src.config import Config

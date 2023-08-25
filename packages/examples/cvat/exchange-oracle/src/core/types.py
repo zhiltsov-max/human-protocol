@@ -77,5 +77,5 @@ class OracleWebhookStatuses(str, Enum, metaclass=BetterEnumMeta):
     failed = "failed"
 
 
-class ProviderType(str, Enum, metaclass=BetterEnumMeta):
+class PlatformType(str, Enum, metaclass=BetterEnumMeta):
     CVAT = "cvat"

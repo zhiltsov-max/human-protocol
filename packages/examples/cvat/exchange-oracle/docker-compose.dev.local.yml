@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: exchange-oracle-postgres
+    image: postgres:14.4
+    restart: on-failure
+    environment:
+      POSTGRES_PASSWORD: 'admin'
+      POSTGRES_USER: 'admin'
+      POSTGRES_DB: 'exchange_oracle'
+      PGDATA: '/var/lib/postgresql/data/pgdata'
+    volumes:
+      - postgres:/var/lib/postgresql/data/pgdata
+    ports:
+      - 5431:5432
+    command: ["postgres", "-c", "log_statement=all"]
+
+  blockchain-node:
+    build:
+      context: ./
+      dockerfile: dockerfiles/blockchain-node.Dockerfile
+    healthcheck:
+      # Using a magic nubmer of 28 here because this is a block number when blockchain-node container is ready to use
+      test: if [ $(( $(wget -q --post-data='{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' -O- http://blockchain-node:8545 | grep -o '"result":"[^"]*"' | awk -F'"' '{print $4}' ) )) -ge 28 ]; then exit 0; else exit 1; fi
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    networks:
+      - test-network
+    ports:
+      - 8545:8545
+
+  minio:
+    container_name: minio
+    image: minio/minio:RELEASE.2022-05-26T05-48-41Z
+    environment:
+      MINIO_ROOT_USER: dev
+      MINIO_ROOT_PASSWORD: devdevdev
+    volumes:
+      - ./tests/utils/manifest.json:/tmp/manifests/manifest.json
+      - ./tests/utils/datasets:/tmp/datasets
+    entrypoint: 'sh'
+    ports:
+      - 9010:9010
+      - 9011:9011
+    command:
+      -c "
+      mkdir -p /data/manifests &&
+      cp /tmp/manifests/manifest.json /data/manifests/manifest.json &&
+      cp -r /tmp/datasets /data &&
+      minio server /data --console-address ':9011' --address ':9010'"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9010/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - test-network
+      - cvat-human-bridge
+
+  minio-mc:
+    container_name: minio-mc
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9010 dev devdevdev;
+      /usr/bin/mc anonymous set public myminio/manifests;
+      /usr/bin/mc mb myminio/results;
+      /usr/bin/mc anonymous set public myminio/results;
+      /usr/bin/mc mb myminio/datasets;
+      /usr/bin/mc anonymous set public myminio/datasets;
+      "
+    networks:
+      - test-network
+
+networks:
+  test-network:
+  cvat-human-bridge:
+    name: cvat-human-bridge
+    external: true
+    # Create with:
+    # docker network create -o "com.docker.network.bridge.enable_icc=true"  -o "com.docker.network.driver.mtu=1500" -o "com.docker.network.bridge.enable_ip_masquerade=true" cvat-human-bridge

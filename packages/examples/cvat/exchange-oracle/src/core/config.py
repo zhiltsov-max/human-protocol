@@ -12,7 +12,7 @@ def str_to_bool(val: str) -> bool:
     return val is True or strtobool(val)
 
 
-class Postgres:
+class PostgresConfig:
     port = os.environ.get("PG_PORT", "5432")
     host = os.environ.get("PG_HOST", "0.0.0.0")
     user = os.environ.get("PG_USER", "admin")
@@ -21,7 +21,7 @@ class Postgres:
 
     @classmethod
     def connection_url(cls):
-        return f"postgresql://{Postgres.user}:{Postgres.password}@{Postgres.host}:{Postgres.port}/{Postgres.database}"
+        return f"postgresql://{PostgresConfig.user}:{PostgresConfig.password}@{PostgresConfig.host}:{PostgresConfig.port}/{PostgresConfig.database}"
 
 
 class PolygonMainnetConfig:
@@ -118,6 +118,10 @@ class FeaturesConfig:
     "Allows using a custom host in manifest bucket urls"
 
 
+class HumanAppConfig:
+    signature = os.environ.get("HUMAN_APP_SIGNATURE", "sample")
+
+
 class Config:
     port = int(os.environ.get("PORT", 8000))
     environment = os.environ.get("ENVIRONMENT", "development")
@@ -129,7 +133,9 @@ class Config:
     polygon_mumbai = PolygonMumbaiConfig
     localhost = LocalhostConfig
 
-    postgres_config = Postgres
+    postgres_config = PostgresConfig
+    human_app_config = HumanAppConfig
+
     cron_config = CronConfig
     cvat_config = CvatConfig
     storage_config = StorageConfig

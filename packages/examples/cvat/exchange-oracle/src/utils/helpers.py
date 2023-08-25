@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import json
 from typing import Dict, Optional, Tuple, cast
 from urllib.parse import urlparse
@@ -111,3 +112,8 @@ def prepare_signed_message(
     signature = sign_message(chain_id, message)
 
     return message, signature
+
+
+def utcnow() -> datetime:
+    "Returns tz-aware UTC now"
+    return datetime.now(timezone.utc)

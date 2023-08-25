@@ -13,8 +13,6 @@ from src.core.types import JobStatuses
 
 from src.utils.enums import BetterEnumMeta
 
-_ORG_SLUG_HEADER = "X-Organization"
-
 
 def get_api_client() -> ApiClient:
     configuration = Configuration(
@@ -23,13 +21,7 @@ def get_api_client() -> ApiClient:
         password=Config.cvat_config.cvat_admin_pass,
     )
 
-    headers = (
-        {_ORG_SLUG_HEADER: Config.cvat_config.cvat_org_slug}
-        if Config.cvat_config.cvat_org_slug
-        else {}
-    )
-
-    return ApiClient(configuration=configuration, headers=headers)
+    return ApiClient(configuration=configuration)
 
 
 def create_cloudstorage(
@@ -302,3 +294,52 @@ def put_job_annotations(job_id: int, storage_id: int, path: str) -> str:
                 f"Exception when calling JobsApi.create_annotations(): {e}\n"
             )
             raise
+
+
+def update_job_assignee(id: str, assignee: str):
+    logger = logging.getLogger("app")
+
+    with get_api_client() as api_client:
+        try:
+            api_client.jobs_api.partial_update(
+                id=id,
+                patched_job_write_request=models.PatchedJobWriteRequest(
+                    assignee=assignee
+                ),
+            )
+        except exceptions.ApiException as e:
+            logger.exception(f"Exception when calling JobsApi.partial_update(): {e}\n")
+            raise
+
+
+def invite_user_into_org(user_email: str):
+    logger = logging.getLogger("app")
+
+    with get_api_client() as api_client:
+        try:
+            api_client.invitations_api.create(
+                models.InvitationWriteRequest(role="worker", email=user_email)
+            )
+        except exceptions.ApiException as e:
+            logger.exception(f"Exception when calling InvitationsApi.create(): {e}\n")
+            raise
+
+
+def get_user_id(user_email: str) -> int:
+    logger = logging.getLogger("app")
+
+    with get_api_client() as api_client:
+        try:
+            (invitation, _) = api_client.invitations_api.create(
+                models.InvitationWriteRequest(role="worker", email=user_email),
+                org=Config.cvat_config.cvat_org_slug,
+            )
+
+            (page, _) = api_client.memberships_api.list(user=invitation.user.username)
+            membership = page.results[0]
+            api_client.memberships_api.destroy(membership.id)
+        except exceptions.ApiException as e:
+            logger.exception(f"Exception when calling InvitationsApi.create(): {e}\n")
+            raise
+
+        return invitation.user.id

@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 
 from sqlalchemy import ColumnExpressionArgument, delete, update
@@ -8,7 +9,7 @@ from typing import List, Optional
 
 
 from src.core.types import ProjectStatuses, TaskStatus, JobStatuses
-from src.models.cvat import DataUpload, Project, Task, Job
+from src.models.cvat import Assignment, DataUpload, Project, Task, Job, User
 
 
 # Project
@@ -20,7 +21,7 @@ def create_project(
     escrow_address: str,
     chain_id: int,
     bucket_url: str,
-) -> int:
+) -> str:
     """
     Create a project from CVAT.
     """
@@ -41,14 +42,16 @@ def create_project(
     return project_id
 
 
-def get_project_by_id(session: Session, project_id: int) -> Project:
+def get_project_by_id(session: Session, project_id: int) -> Optional[Project]:
     project_query = select(Project).where(Project.id == project_id)
     project = session.execute(project_query).scalars().first()
 
     return project
 
 
-def get_project_by_escrow_address(session: Session, escrow_address: str) -> Project:
+def get_project_by_escrow_address(
+    session: Session, escrow_address: str
+) -> Optional[Project]:
     project_query = select(Project).where(Project.escrow_address == escrow_address)
     project = session.execute(project_query).scalars().first()
 
@@ -70,13 +73,15 @@ def get_projects_by_status(
 
 
 def get_available_projects(
-    session: Session, username: Optional[str] = None, limit: int = 10
+    session: Session, wallet_id: Optional[str] = None, limit: int = 10
 ) -> List[Project]:
     def _maybe_assigned_to_the_user(
         expr: ColumnExpressionArgument,
     ) -> ColumnExpressionArgument:
-        if username:
-            return expr | Project.jobs.any(Job.assignee == username)
+        if wallet_id:
+            return expr | Project.jobs.any(
+                Job.assignment.has(Assignment.user_wallet_id == wallet_id)
+            )
         return expr
 
     return (
@@ -84,7 +89,7 @@ def get_available_projects(
         .where(
             _maybe_assigned_to_the_user(
                 (Project.status == ProjectStatuses.annotation.value)
-                & Project.jobs.any(Job.assignee == "")
+                & Project.jobs.any(Job.assignment == None)
             )
         )
         .distinct()
@@ -96,8 +101,6 @@ def get_available_projects(
 def update_project_status(
     session: Session, project_id: int, status: ProjectStatuses
 ) -> None:
-    if status not in ProjectStatuses:
-        raise ValueError(f"{status} is not available")
     upd = update(Project).where(Project.id == project_id).values(status=status.value)
     session.execute(upd)
 
@@ -119,7 +122,7 @@ def is_project_completed(session: Session, project_id: int) -> bool:
 # Task
 def create_task(
     session: Session, cvat_id: int, cvat_project_id: int, status: TaskStatus
-) -> int:
+) -> str:
     """
     Create a task from CVAT.
     """
@@ -136,7 +139,7 @@ def create_task(
     return task_id
 
 
-def get_task_by_id(session: Session, task_id: int) -> Task:
+def get_task_by_id(session: Session, task_id: int) -> Optional[Task]:
     task_query = select(Task).where(Task.id == task_id)
     task = session.execute(task_query).scalars().first()
 
@@ -155,9 +158,7 @@ def get_tasks_by_status(session: Session, status: TaskStatus) -> List[Task]:
 
 
 def update_task_status(session: Session, task_id: int, status: TaskStatus) -> None:
-    if status not in TaskStatus:
-        raise ValueError(f"{status} is not available")
-    upd = update(Task).where(Task.id == task_id).values(status=status.values)
+    upd = update(Task).where(Task.id == task_id).values(status=status.value)
     session.execute(upd)
 
 
@@ -210,9 +211,8 @@ def create_job(
     cvat_id: int,
     cvat_task_id: int,
     cvat_project_id: int,
-    assignee: str = "",
     status: JobStatuses = JobStatuses.new,
-) -> int:
+) -> str:
     """
     Create a job from CVAT.
     """
@@ -223,7 +223,6 @@ def create_job(
         cvat_task_id=cvat_task_id,
         cvat_project_id=cvat_project_id,
         status=status.value,
-        assignee=assignee,
     )
 
     session.add(job)
@@ -231,28 +230,21 @@ def create_job(
     return job_id
 
 
-def get_job_by_id(session: Session, job_id: int) -> Job:
+def get_job_by_id(session: Session, job_id: int) -> Optional[Job]:
     job_query = select(Job).where(Job.id == job_id)
     job = session.execute(job_query).scalars().first()
 
     return job
 
 
-def get_job_by_cvat_id(session: Session, cvat_id: int) -> Job:
+def get_job_by_cvat_id(session: Session, cvat_id: int) -> Optional[Job]:
     job_query = select(Job).where(Job.cvat_id == cvat_id)
     job = session.execute(job_query).scalars().first()
 
     return job
 
 
-def update_job_assignee(session: Session, job_id: int, assignee: str) -> None:
-    upd = update(Job).where(Job.id == job_id).values(assignee=assignee)
-    session.execute(upd)
-
-
 def update_job_status(session: Session, job_id: int, status: JobStatuses) -> None:
-    if status not in JobStatuses:
-        raise ValueError(f"{status} is not available")
     upd = update(Job).where(Job.id == job_id).values(status=status.value)
     session.execute(upd)
 
@@ -277,3 +269,83 @@ def get_jobs_by_cvat_project_id(session: Session, cvat_project_id: int) -> List[
         .all()
     )
     return jobs
+
+
+# Users
+
+
+def put_user(session: Session, wallet_id: str, cvat_email: str, cvat_id: int) -> User:
+    """
+    Bind a CVAT username to a HUMAN App user
+    """
+    assert not (
+        bool(cvat_email) ^ bool(cvat_id)
+    ), "cvat_email and cvat_id cannot be used separately"
+
+    user = User(wallet_id=wallet_id, cvat_email=cvat_email, cvat_id=cvat_id)
+
+    session.merge(user)
+
+    return user
+
+
+def get_user_by_id(session: Session, wallet_id: str) -> Optional[User]:
+    return session.query(User).where(User.wallet_id == wallet_id).first()
+
+
+# Assignments
+
+
+def create_assignment(
+    session: Session, wallet_id: str, cvat_job_id: int, closes_at: datetime
+) -> str:
+    obj_id = str(uuid.uuid4())
+    assignment = Assignment(
+        id=obj_id,
+        user_wallet_id=wallet_id,
+        cvat_job_id=cvat_job_id,
+        closes_at=closes_at,
+    )
+
+    session.add(assignment)
+
+    return obj_id
+
+
+def get_assignments_by_id(session: Session, ids: List[str]) -> List[Assignment]:
+    return session.query(Assignment).where(Assignment.id.in_(ids)).all()
+
+
+def update_assignment(session: Session, id: int, finished_at: datetime):
+    statement = (
+        update(Assignment).where(Assignment.id == id).values(finished_at=finished_at)
+    )
+    session.execute(statement)
+
+
+def delete_assignment(session: Session, id: int):
+    statement = delete(Assignment).where(Assignment.id == id)
+    session.execute(statement)
+
+
+def expire_assignment(session: Session, assignment: Assignment):
+    delete_assignment(session, assignment.id)
+
+
+def complete_assignment(
+    session: Session, assignment: Assignment, finished_at: datetime
+):
+    update_assignment(session, assignment.id, finished_at=finished_at)
+
+
+def get_user_assignments_in_cvat_projects(
+    session: Session, wallet_id: int, cvat_projects: List[int]
+) -> List[Assignment]:
+    return (
+        session.query(Assignment)
+        .where(
+            Assignment.job.has(Job.cvat_project_id.in_(cvat_projects))
+            & (Assignment.user_wallet_id == wallet_id)
+        )
+        .all()
+    )

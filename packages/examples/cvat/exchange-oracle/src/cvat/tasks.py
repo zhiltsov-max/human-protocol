@@ -1,9 +1,7 @@
-import io
 import os
 from tempfile import TemporaryDirectory
 from typing import List
 import random
-import zipfile
 
 from datumaro.util import take_by
 from datumaro.util.image import IMAGE_EXTENSIONS
@@ -19,6 +17,7 @@ from src.utils.helpers import compose_bucket_url, parse_bucket_url, parse_manife
 import src.services.cvat as db_service
 import src.services.cloud as cloud_service
 import src.cvat.api_calls as cvat_api
+import src.models.cvat as models
 
 
 label_type_mapping = {

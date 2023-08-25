@@ -6,8 +6,8 @@ from src.db import SessionLocal
 from src.core.config import CronConfig
 from src.core.types import OracleWebhookTypes, JobLauncherEventType
 
-from src import cvat
 from src.chain.escrow import validate_escrow
+import src.cvat.tasks as cvat
 
 from src.models.webhook import Webhook
 import src.services.webhook as db_service

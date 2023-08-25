@@ -8,6 +8,7 @@ from sqlalchemy.sql import func
 
 from src.core.types import ProjectStatuses, TaskStatus, JobStatuses, TaskType, Networks
 from src.db import Base
+from src.utils.helpers import utcnow
 
 
 class Project(Base):
@@ -22,7 +23,6 @@ class Project(Base):
     bucket_url = Column(String, unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    last_processed_webhook_delivery_id = Column(Integer, nullable=True)
 
     tasks: Mapped[List["Task"]] = relationship(
         back_populates="project",
@@ -93,12 +93,54 @@ class Job(Base):
         Integer, ForeignKey("projects.cvat_id", ondelete="CASCADE"), nullable=False
     )
     status = Column(String, Enum(JobStatuses), nullable=False)
-    assignee = Column(String(42), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     task: Mapped["Task"] = relationship(back_populates="jobs")
     project: Mapped["Project"] = relationship(back_populates="jobs")
+    assignment: Mapped["Assignment"] = relationship(
+        back_populates="job", cascade="all, delete", passive_deletes=True
+    )
 
     def __repr__(self):
         return f"Job. id={self.id}"
+
+
+class User(Base):
+    __tablename__ = "users"
+    wallet_id = Column(String, primary_key=True, index=True, nullable=False)
+    cvat_email = Column(String, unique=True, index=True, nullable=True)
+    cvat_id = Column(Integer, unique=True, index=True, nullable=True)
+
+    assignments: Mapped[List["Assignment"]] = relationship(
+        back_populates="user", cascade="all, delete", passive_deletes=True
+    )
+
+    def __repr__(self):
+        return f"User. wallet_id={self.wallet_id} cvat_id={self.cvat_id}"
+
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+    id = Column(String, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    closes_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=True, server_default=None)
+    user_wallet_id = Column(
+        String, ForeignKey("users.wallet_id", ondelete="CASCADE"), nullable=False
+    )
+    cvat_job_id = Column(
+        Integer, ForeignKey("jobs.cvat_id", ondelete="CASCADE"), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="assignments")
+    job: Mapped["Job"] = relationship(back_populates="assignment")
+
+    @property
+    def is_finished(self) -> bool:
+        return self.finished_at or utcnow() > self.closes_at
+
+    def __repr__(self):
+        return (
+            f"Assignment. id={self.id} user={self.user.cvat_id} job={self.job.cvat_id}"
+        )
