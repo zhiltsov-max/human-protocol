@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import AnyUrl, BaseModel, Field
 
 from src.core.types import TaskType, PlatformType
 
 
 class AssignmentResponse(BaseModel):
-    cvat_job_id: int
+    assignment_url: AnyUrl
     started_at: datetime
     finishes_at: datetime
 

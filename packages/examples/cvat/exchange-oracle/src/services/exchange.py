@@ -9,7 +9,7 @@ import src.cvat.api_calls as cvat_api
 import src.services.cvat as cvat_db_service
 
 from src.chain.escrow import get_escrow_manifest
-from src.utils.helpers import parse_manifest, utcnow
+from src.utils.helpers import parse_manifest, utcnow, compose_assignment_url
 from src.utils.requests import get_or_404
 
 
@@ -32,7 +32,9 @@ def serialize_task(
         serialized_assignment = None
         if assignment:
             serialized_assignment = service_api.AssignmentResponse(
-                cvat_job_id=assignment.cvat_job_id,
+                assignment_url=compose_assignment_url(
+                    task_id=assignment.job.cvat_task_id, job_id=assignment.cvat_job_id
+                ),
                 started_at=assignment.created_at,
                 finishes_at=assignment.closes_at,
             )

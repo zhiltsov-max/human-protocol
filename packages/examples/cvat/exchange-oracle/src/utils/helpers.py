@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from typing import Dict, Optional, Tuple, cast
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from src.chain.web3 import sign_message
 from src.core.config import Config
-from src.core.events import ExchangeOracleEvent_TaskFinished, parse_event
+from src.core.oracle_events import ExchangeOracleEvent_TaskFinished, parse_event
 from src.core.manifest import TaskManifest
 from src.core.types import (
     ExchangeOracleEventType,
@@ -117,3 +117,7 @@ def prepare_signed_message(
 def utcnow() -> datetime:
     "Returns tz-aware UTC now"
     return datetime.now(timezone.utc)
+
+
+def compose_assignment_url(task_id, job_id) -> str:
+    return urljoin(Config.cvat_config.cvat_url, f"/tasks/{task_id}/jobs/{job_id}")
