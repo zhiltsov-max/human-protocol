@@ -9,7 +9,7 @@ import src.cvat.api_calls as cvat_api
 from src.schemas.exchange import TaskResponse, UserRequest, UserResponse
 import src.services.exchange as oracle_service
 from src.validators.signature import validate_human_app_signature
-import src.services.cvat as cvat_db_service
+import src.services.cvat as cvat_service
 
 router = APIRouter()
 
@@ -46,7 +46,7 @@ async def register(
     # The db exception is raised after the session (which is a transaction) is closed
     try:
         with SessionLocal.begin() as session:
-            user = cvat_db_service.put_user(
+            user = cvat_service.put_user(
                 session,
                 wallet_id=user.wallet_id,
                 cvat_email=user.cvat_email,

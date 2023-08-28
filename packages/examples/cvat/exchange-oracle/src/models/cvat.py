@@ -6,7 +6,13 @@ from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
 
-from src.core.types import ProjectStatuses, TaskStatus, JobStatuses, TaskType, Networks
+from src.core.types import (
+    ProjectStatuses,
+    TaskStatus,
+    JobStatuses,
+    TaskType,
+    Networks,
+)
 from src.db import Base
 from src.utils.helpers import utcnow
 

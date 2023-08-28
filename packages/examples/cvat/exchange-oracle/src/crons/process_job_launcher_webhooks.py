@@ -1,5 +1,5 @@
 import logging
-from src.core.events import ExchangeOracleEvent_TaskCreationFailed
+from src.core.oracle_events import ExchangeOracleEvent_TaskCreationFailed
 
 from src.db import SessionLocal
 
@@ -18,10 +18,9 @@ LOG_MODULE = "[cron][webhook][process_job_launcher_webhooks]"
 
 def process_job_launcher_webhooks() -> None:
     """
-    Process incoming webhooks in a pending state:
-      * Creates a job on CVAT
-      * Store necessary information about jobs in a database
+    Process incoming oracle webhooks
     """
+
     try:
         logger = logging.getLogger("app")
         logger.info(f"{LOG_MODULE} Starting cron job")
@@ -42,7 +41,7 @@ def process_job_launcher_webhooks() -> None:
                     db_service.inbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
                     logger.exception(
-                        f"Webhook: {webhook.id} failed during execution. Error {e}",
+                        f"Oracle webhook {webhook.id} handling failed: {e}"
                     )
                     db_service.inbox.handle_webhook_fail(session, webhook.id)
 

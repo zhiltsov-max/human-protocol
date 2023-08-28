@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from src.core.types import ProjectStatuses, TaskStatus, JobStatuses
 from src.models.cvat import Assignment, DataUpload, Project, Task, Job, User
+from src.utils.helpers import utcnow
 
 
 # Project
@@ -42,7 +43,7 @@ def create_project(
     return project_id
 
 
-def get_project_by_id(session: Session, project_id: int) -> Optional[Project]:
+def get_project_by_id(session: Session, project_id: str) -> Optional[Project]:
     project_query = select(Project).where(Project.id == project_id)
     project = session.execute(project_query).scalars().first()
 
@@ -139,7 +140,7 @@ def create_task(
     return task_id
 
 
-def get_task_by_id(session: Session, task_id: int) -> Optional[Task]:
+def get_task_by_id(session: Session, task_id: str) -> Optional[Task]:
     task_query = select(Task).where(Task.id == task_id)
     task = session.execute(task_query).scalars().first()
 
@@ -230,7 +231,7 @@ def create_job(
     return job_id
 
 
-def get_job_by_id(session: Session, job_id: int) -> Optional[Job]:
+def get_job_by_id(session: Session, job_id: str) -> Optional[Job]:
     job_query = select(Job).where(Job.id == job_id)
     job = session.execute(job_query).scalars().first()
 
@@ -316,26 +317,35 @@ def get_assignments_by_id(session: Session, ids: List[str]) -> List[Assignment]:
     return session.query(Assignment).where(Assignment.id.in_(ids)).all()
 
 
-def update_assignment(session: Session, id: int, finished_at: datetime):
+def get_active_expired_assignments(
+    session: Session, limit: int = 100
+) -> List[Assignment]:
+    return (
+        session.query(Assignment)
+        .where((Assignment.finished_at == None) & (Assignment.closes_at <= utcnow()))
+        .limit(limit)
+        .all()
+    )
+
+
+def update_assignment(session: Session, id: str, finished_at: datetime):
     statement = (
         update(Assignment).where(Assignment.id == id).values(finished_at=finished_at)
     )
     session.execute(statement)
 
 
-def delete_assignment(session: Session, id: int):
+def delete_assignment(session: Session, id: str):
     statement = delete(Assignment).where(Assignment.id == id)
     session.execute(statement)
 
 
-def expire_assignment(session: Session, assignment: Assignment):
-    delete_assignment(session, assignment.id)
+def expire_assignment(session: Session, assignment_id: str):
+    delete_assignment(session, assignment_id)
 
 
-def complete_assignment(
-    session: Session, assignment: Assignment, finished_at: datetime
-):
-    update_assignment(session, assignment.id, finished_at=finished_at)
+def complete_assignment(session: Session, assignment_id: str, finished_at: datetime):
+    update_assignment(session, assignment_id, finished_at=finished_at)
 
 
 def get_user_assignments_in_cvat_projects(

@@ -1,7 +1,6 @@
 # pylint: disable=too-few-public-methods
 from sqlalchemy import JSON, Column, String, DateTime, Enum, Integer, UniqueConstraint
 from sqlalchemy.sql import func
-from sqlalchemy.event import listens_for
 
 from src.core.types import (
     OracleWebhookTypes,

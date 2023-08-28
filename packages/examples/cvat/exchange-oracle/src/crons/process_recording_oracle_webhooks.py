@@ -30,7 +30,7 @@ def process_recording_oracle_webhooks() -> None:
         with SessionLocal.begin() as session:
             webhooks = db_service.outbox.get_pending_webhooks(
                 session,
-                OracleWebhookTypes.recording_oracle.value,
+                OracleWebhookTypes.recording_oracle,
                 CronConfig.process_recording_oracle_webhooks_chunk_size,
             )
             for webhook in webhooks:
@@ -50,11 +50,12 @@ def process_recording_oracle_webhooks() -> None:
                     )
 
                     headers = {"human-signature": signature}
-                    with httpx.Client() as client:
-                        response = client.post(
-                            webhook_url, headers=headers, data=serialized_data
-                        )
-                        response.raise_for_status()
+                    # TODO: restore
+                    # with httpx.Client() as client:
+                    #     response = client.post(
+                    #         webhook_url, headers=headers, data=serialized_data
+                    #     )
+                    #     response.raise_for_status()
                     db_service.outbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
                     logger.exception(

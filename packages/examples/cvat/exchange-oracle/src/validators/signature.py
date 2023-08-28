@@ -8,7 +8,9 @@ from src.chain.escrow import get_job_launcher_address
 from src.chain.web3 import recover_signer
 
 
-async def validate_webhook_signature(request: Request, signature: str, webhook: dict):
+async def validate_oracle_webhook_signature(
+    request: Request, signature: str, webhook: dict
+):
     data: bytes = await request.body()
     message: dict = literal_eval(data.decode("utf-8"))
 

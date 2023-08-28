@@ -1,5 +1,6 @@
 from enum import Enum
 import io
+from time import sleep
 import zipfile
 import xmltodict
 import logging
@@ -64,6 +65,33 @@ def create_project(escrow_address: str, labels: list) -> models.ProjectRead:
             raise
 
 
+def get_project_annotations(cvat_id: int, format_name: str) -> io.RawIOBase:
+    logger = logging.getLogger("app")
+    with get_api_client() as api_client:
+        try:
+            # TODO: support long-running dataset preparation (e.g. 5-10 minutes)
+            for _ in range(5):
+                (_, response) = api_client.projects_api.retrieve_annotations(
+                    id=cvat_id,
+                    action="download",
+                    format=format_name,
+                    _parse_response=False,
+                )
+                if response.status == HTTPStatus.OK:
+                    break
+                sleep(5)
+
+            file_buffer = io.BytesIO(response.data)
+            assert zipfile.is_zipfile(file_buffer)
+            file_buffer.seek(0)
+            return file_buffer
+        except exceptions.ApiException as e:
+            logger.exception(
+                f"Exception when calling JobsApi.retrieve_annotations: {e}\n"
+            )
+            raise
+
+
 def setup_cvat_webhooks(project_id: int) -> models.WebhookRead:
     logger = logging.getLogger("app")
     with get_api_client() as api_client:
@@ -104,23 +132,6 @@ def create_task(project_id: int, escrow_address: str) -> models.TaskRead:
         try:
             (task_info, response) = api_client.tasks_api.create(task_write_request)
             return task_info
-
-        except exceptions.ApiException as e:
-            logger.exception(f"Exception when calling tasks_api.create: {e}\n")
-            raise
-
-
-def create_gt_job(task_id: int, size: int) -> models.JobRead:
-    logger = logging.getLogger("app")
-    with get_api_client() as api_client:
-        job_write_request = models.JobWriteRequest(
-            task_id=task_id,
-            frame_selection_method="random_uniform",
-            size=size,
-        )
-        try:
-            (job, response) = api_client.jobs_api.create(job_write_request)
-            return job
 
         except exceptions.ApiException as e:
             logger.exception(f"Exception when calling tasks_api.create: {e}\n")
@@ -178,6 +189,33 @@ def put_task_data(
             raise
 
 
+def get_task_annotations(cvat_id: int, format_name: str) -> io.RawIOBase:
+    logger = logging.getLogger("app")
+    with get_api_client() as api_client:
+        try:
+            # TODO: support long-running dataset preparation (e.g. 5-10 minutes)
+            for _ in range(5):
+                (_, response) = api_client.tasks_api.retrieve_annotations(
+                    id=cvat_id,
+                    action="download",
+                    format=format_name,
+                    _parse_response=False,
+                )
+                if response.status == HTTPStatus.OK:
+                    break
+                sleep(5)
+
+            file_buffer = io.BytesIO(response.data)
+            assert zipfile.is_zipfile(file_buffer)
+            file_buffer.seek(0)
+            return file_buffer
+        except exceptions.ApiException as e:
+            logger.exception(
+                f"Exception when calling JobsApi.retrieve_annotations: {e}\n"
+            )
+            raise
+
+
 def fetch_task_jobs(task_id: int) -> List[models.JobRead]:
     logger = logging.getLogger("app")
     with get_api_client() as api_client:
@@ -191,24 +229,25 @@ def fetch_task_jobs(task_id: int) -> List[models.JobRead]:
             raise
 
 
-def get_job_annotations(cvat_project_id: int) -> Dict:
+def get_job_annotations(cvat_id: int, format_name: str) -> io.RawIOBase:
     logger = logging.getLogger("app")
     with get_api_client() as api_client:
         try:
             for _ in range(5):
                 (_, response) = api_client.jobs_api.retrieve_annotations(
-                    id=cvat_project_id,
+                    id=cvat_id,
                     action="download",
-                    format="CVAT for images 1.1",
+                    format=format_name,
                     _parse_response=False,
                 )
                 if response.status == HTTPStatus.OK:
                     break
-            buffer = io.BytesIO(response.data)
-            with zipfile.ZipFile(buffer, "r") as zip_file:
-                xml_content = zip_file.read("annotations.xml").decode("utf-8")
-            annotations = xmltodict.parse(xml_content, attr_prefix="")
-            return annotations["annotations"]
+                sleep(5)
+
+            file_buffer = io.BytesIO(response.data)
+            assert zipfile.is_zipfile(file_buffer)
+            file_buffer.seek(0)
+            return file_buffer
         except exceptions.ApiException as e:
             logger.exception(
                 f"Exception when calling JobsApi.retrieve_annotations: {e}\n"
@@ -264,7 +303,7 @@ def get_task_upload_status(cvat_id: int) -> Optional[UploadStatus]:
     with get_api_client() as api_client:
         try:
             (status, _) = api_client.tasks_api.retrieve_status(cvat_id)
-            return UploadStatus[status.state.value]
+            return UploadStatus(status.state.value)
         except exceptions.ApiException as e:
             if e.status == 404:
                 return None
@@ -273,30 +312,28 @@ def get_task_upload_status(cvat_id: int) -> Optional[UploadStatus]:
             raise
 
 
-def put_job_annotations(job_id: int, storage_id: int, path: str) -> str:
+def clear_job_annotations(job_id: int) -> None:
     logger = logging.getLogger("app")
 
     with get_api_client() as api_client:
         try:
-            (_, response) = api_client.jobs_api.create_annotations(
-                job_id,
-                cloud_storage_id=storage_id,
-                use_default_location=False,
-                location=path,
-                format="COCO 1.0",
+            api_client.jobs_api.update_annotations(
+                id=job_id,
+                job_annotations_update_request=models.JobAnnotationsUpdateRequest(
+                    tags=[], shapes=[], tracks=[]
+                ),
             )
-            return response.data["rq_id"]
         except exceptions.ApiException as e:
             if e.status == 404:
                 return None
 
             logger.exception(
-                f"Exception when calling JobsApi.create_annotations(): {e}\n"
+                f"Exception when calling JobsApi.partial_update_annotations(): {e}\n"
             )
             raise
 
 
-def update_job_assignee(id: str, assignee: str):
+def update_job_assignee(id: str, assignee_id: Optional[int]):
     logger = logging.getLogger("app")
 
     with get_api_client() as api_client:
@@ -304,7 +341,23 @@ def update_job_assignee(id: str, assignee: str):
             api_client.jobs_api.partial_update(
                 id=id,
                 patched_job_write_request=models.PatchedJobWriteRequest(
-                    assignee=assignee
+                    assignee=assignee_id
+                ),
+            )
+        except exceptions.ApiException as e:
+            logger.exception(f"Exception when calling JobsApi.partial_update(): {e}\n")
+            raise
+
+
+def restart_job(id: str):
+    logger = logging.getLogger("app")
+
+    with get_api_client() as api_client:
+        try:
+            api_client.jobs_api.partial_update(
+                id=id,
+                patched_job_write_request=models.PatchedJobWriteRequest(
+                    stage="annotation", state="new"
                 ),
             )
         except exceptions.ApiException as e:

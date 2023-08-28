@@ -74,6 +74,8 @@ class CronConfig:
         "TRACK_CREATING_TASKS_CHUNK_SIZE", 5
     )
     track_creating_tasks_int = int(os.environ.get("TRACK_CREATING_TASKS_INT", 300))
+    track_assignments_int = int(os.environ.get("TRACK_ASSIGNMENTS_INT", 5))
+    track_assignments_chunk_size = os.environ.get("TRACK_ASSIGNMENTS_CHUNK_SIZE", 100)
 
     retrieve_annotations_int = int(os.environ.get("RETRIEVE_ANNOTATIONS_INT", 60))
     retrieve_annotations_chunk_size = os.environ.get(
@@ -116,6 +118,8 @@ class FeaturesConfig:
         os.environ.get("ENABLE_CUSTOM_CLOUD_HOST", "no")
     )
     "Allows using a custom host in manifest bucket urls"
+
+    default_assignment_time = int(os.environ.get("DEFAULT_ASSIGNMENT_TIME", 300))
 
 
 class HumanAppConfig:

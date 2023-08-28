@@ -6,7 +6,7 @@ from src.core.types import OracleWebhookTypes
 from src.db import SessionLocal
 from src.schemas.webhook import OracleWebhook, OracleWebhookResponse
 import src.services.webhook as oracle_db_service
-from src.validators.signature import validate_webhook_signature
+from src.validators.signature import validate_oracle_webhook_signature
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ async def oracle_webhook(
     try:
         await request.body()
         # TODO: restore
-        # await validate_webhook_signature(request, human_signature, webhook)
+        # await validate_oracle_webhook_signature(request, human_signature, webhook)
         # validate_escrow(webhook.chain_id, webhook.escrow_address)
 
         with SessionLocal.begin() as session:

@@ -6,7 +6,7 @@ from src.core.types import JobStatuses, PlatformType, ProjectStatuses
 from src.schemas import exchange as service_api
 import src.models.cvat as models
 import src.cvat.api_calls as cvat_api
-import src.services.cvat as cvat_db_service
+import src.services.cvat as cvat_service
 
 from src.chain.escrow import get_escrow_manifest
 from src.utils.helpers import parse_manifest, utcnow, compose_assignment_url
@@ -17,13 +17,11 @@ def serialize_task(
     project_id: str, *, assignment_id: Optional[str] = None
 ) -> service_api.TaskResponse:
     with SessionLocal.begin() as session:
-        project = cvat_db_service.get_project_by_id(session, project_id)
+        project = cvat_service.get_project_by_id(session, project_id)
 
         assignment = None
         if assignment_id:
-            assignment = cvat_db_service.get_assignments_by_id(
-                session, [assignment_id]
-            )[0]
+            assignment = cvat_service.get_assignments_by_id(session, [assignment_id])[0]
 
         manifest = parse_manifest(
             get_escrow_manifest(project.chain_id, project.escrow_address)
@@ -59,12 +57,12 @@ def get_available_tasks(
     results = []
 
     with SessionLocal.begin() as session:
-        cvat_projects = cvat_db_service.get_available_projects(
+        cvat_projects = cvat_service.get_available_projects(
             session, wallet_id=wallet_id
         )
         user_assignments = {
             assignment.job.project.id: assignment
-            for assignment in cvat_db_service.get_user_assignments_in_cvat_projects(
+            for assignment in cvat_service.get_user_assignments_in_cvat_projects(
                 session,
                 wallet_id=wallet_id,
                 cvat_projects=[p.cvat_id for p in cvat_projects],
@@ -85,10 +83,10 @@ def get_available_tasks(
 def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
     with SessionLocal.begin() as session:
         user = get_or_404(
-            cvat_db_service.get_user_by_id(session, wallet_id), wallet_id, "user"
+            cvat_service.get_user_by_id(session, wallet_id), wallet_id, "user"
         )
         project = get_or_404(
-            cvat_db_service.get_project_by_id(session, project_id), project_id, "task"
+            cvat_service.get_project_by_id(session, project_id), project_id, "task"
         )
 
         if project.status != ProjectStatuses.annotation:
@@ -126,14 +124,18 @@ def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
         if not unassigned_job:
             return None
 
-        assignment_id = cvat_db_service.create_assignment(
+        assignment_id = cvat_service.create_assignment(
             session,
             wallet_id=user.wallet_id,
             cvat_job_id=unassigned_job.cvat_id,
             closes_at=now + timedelta(seconds=manifest.annotation.max_time),
         )
 
-        cvat_api.update_job_assignee(id=unassigned_job.cvat_id, assignee=user.cvat_id)
+        cvat_api.clear_job_annotations(unassigned_job.cvat_id)
+        cvat_api.restart_job(unassigned_job.cvat_id)
+        cvat_api.update_job_assignee(
+            id=unassigned_job.cvat_id, assignee_id=user.cvat_id
+        )
         # rollback is automatic within the transaction
 
     return assignment_id

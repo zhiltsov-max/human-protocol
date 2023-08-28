@@ -26,10 +26,16 @@ label_type_mapping = {
     TaskType.image_boxes: CvatLabelType.rectangle,
 }
 
-dataset_format_mapping = {
-    TaskType.image_label_binary: "datumaro",
+dm_dataset_format_mapping = {
+    TaskType.image_label_binary: "cvat_images",
     TaskType.image_points: "coco_person_keypoints",
     TaskType.image_boxes: "coco_instances",
+}
+
+cvat_dataset_export_format_mapping = {
+    TaskType.image_label_binary: "CVAT for images 1.1",
+    TaskType.image_points: "COCO Keypoints 1.0",
+    TaskType.image_boxes: "COCO 1.0",
 }
 
 
@@ -42,7 +48,7 @@ def get_gt_filenames(
             f.write(gt_file_data)
 
         gt_dataset = dm.Dataset.import_from(
-            gt_filename, format=dataset_format_mapping[manifest.annotation.type]
+            gt_filename, format=dm_dataset_format_mapping[manifest.annotation.type]
         )
 
         gt_filenames = set(s.id + s.media.ext for s in gt_dataset)

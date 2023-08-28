@@ -8,7 +8,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from src.core.events import OracleEvent, validate_event
+from src.core.oracle_events import OracleEvent, validate_event
 from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
@@ -19,14 +19,14 @@ from src.core.config import Config
 from src.utils.enums import BetterEnumMeta
 
 
-class DirectionTag(str, Enum, metaclass=BetterEnumMeta):
+class OracleWebhookDirectionTag(str, Enum, metaclass=BetterEnumMeta):
     incoming = "incoming"
     outgoing = "outgoing"
 
 
 @define
-class WebhookQueue:
-    direction: DirectionTag
+class OracleWebhookQueue:
+    direction: OracleWebhookDirectionTag
 
     def create_webhook(
         self,
@@ -48,7 +48,7 @@ class WebhookQueue:
         ), f"'event' and 'event_type' cannot be used together. Please use only one of the fields"
 
         if event_type:
-            if self.direction == DirectionTag.incoming:
+            if self.direction == OracleWebhookDirectionTag.incoming:
                 sender = type
             else:
                 sender = OracleWebhookTypes.exchange_oracle
@@ -57,7 +57,7 @@ class WebhookQueue:
             event_type = event.get_type()
             event_data = event.dict()
 
-        if self.direction == DirectionTag.incoming and not signature:
+        if self.direction == OracleWebhookDirectionTag.incoming and not signature:
             raise ValueError("Webhook signature must be specified for incoming events")
 
         existing_webhook_query = select(Webhook).where(Webhook.signature == signature)
@@ -73,7 +73,6 @@ class WebhookQueue:
                 type=type.value,
                 event_type=event_type,
                 event_data=event_data,
-                status=OracleWebhookStatuses.pending.value,
                 direction=self.direction.value,
             )
 
@@ -101,9 +100,9 @@ class WebhookQueue:
     def update_webhook_status(
         self, session: Session, webhook_id: int, status: OracleWebhookStatuses
     ) -> None:
-        if status not in OracleWebhookStatuses.__members__.values():
-            raise ValueError(f"{status} is not available")
-        upd = update(Webhook).where(Webhook.id == webhook_id).values(status=status)
+        upd = (
+            update(Webhook).where(Webhook.id == webhook_id).values(status=status.value)
+        )
         session.execute(upd)
 
     def handle_webhook_success(self, session: Session, webhook_id: int) -> None:
@@ -136,5 +135,5 @@ class WebhookQueue:
         session.execute(upd)
 
 
-inbox = WebhookQueue(direction=DirectionTag.incoming)
-outbox = WebhookQueue(direction=DirectionTag.outgoing)
+inbox = OracleWebhookQueue(direction=OracleWebhookDirectionTag.incoming)
+outbox = OracleWebhookQueue(direction=OracleWebhookDirectionTag.outgoing)

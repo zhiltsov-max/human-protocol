@@ -29,7 +29,7 @@ class TaskStatus(str, Enum, metaclass=BetterEnumMeta):
 
 class JobStatuses(str, Enum, metaclass=BetterEnumMeta):
     new = "new"
-    in_progress = "in_progress"
+    in_progress = "in progress"
     completed = "completed"
 
 

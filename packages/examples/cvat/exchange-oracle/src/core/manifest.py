@@ -2,6 +2,7 @@ from decimal import Decimal
 from pydantic import AnyUrl, BaseModel, Field, root_validator
 
 from src.core.types import TaskType
+from src.core.config import Config
 
 
 class DataInfo(BaseModel):
@@ -27,7 +28,9 @@ class AnnotationInfo(BaseModel):
     job_size: int = 10
     "Frames per job, validation frames are not included"
 
-    max_time: int = 300
+    max_time: int = Field(
+        default_factory=lambda: Config.features.default_assignment_time
+    )
     "Maximum time per job (assignment) for an annotator, in seconds"
 
     @root_validator

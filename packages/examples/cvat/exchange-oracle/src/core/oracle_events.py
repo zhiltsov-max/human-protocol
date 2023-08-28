@@ -32,22 +32,21 @@ class JobLauncherEvent_EscrowCanceled(OracleEvent):
 
 
 class RecordingOracleEvent_TaskCompleted(OracleEvent):
-    task_id: int
+    pass  # escrow is enough for now
 
 
 class RecordingOracleEvent_TaskRejected(OracleEvent):
-    task_id: int
+    # no task_id, escrow is enough for now
     rejected_job_ids: list[int]
 
 
 class ExchangeOracleEvent_TaskCreationFailed(OracleEvent):
-    # no task_id, escrow is enough
+    # no task_id, escrow is enough for now
     reason: str
 
 
 class ExchangeOracleEvent_TaskFinished(OracleEvent):
-    task_id: int
-    s3_url: str
+    pass  # escrow is enough for now
 
 
 _event_type_map = {
