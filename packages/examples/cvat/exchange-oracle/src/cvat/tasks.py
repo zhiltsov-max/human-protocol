@@ -17,7 +17,6 @@ from src.utils.helpers import compose_bucket_url, parse_bucket_url, parse_manife
 import src.services.cvat as db_service
 import src.services.cloud as cloud_service
 import src.cvat.api_calls as cvat_api
-import src.models.cvat as models
 
 
 label_type_mapping = {
@@ -154,6 +153,9 @@ def create_task(escrow_address: str, chain_id: int) -> None:
     # Create a project
     project = cvat_api.create_project(escrow_address, label_configuration)
 
+    # Setup webhooks for a project (update:task, update:job)
+    webhook = cvat_api.create_cvat_webhook(project.id)
+
     with SessionLocal.begin() as session:
         db_service.create_project(
             session,
@@ -167,10 +169,8 @@ def create_task(escrow_address: str, chain_id: int) -> None:
                 bucket_host=data_bucket_host,
                 provider=data_cloud_provider,
             ),
+            cvat_webhook_id=webhook.id,
         )
-
-    # Setup webhooks for a project (update:task, update:job)
-    cvat_api.setup_cvat_webhooks(project.id)
 
     for job_filenames in job_configuration:
         task = cvat_api.create_task(project.id, escrow_address)

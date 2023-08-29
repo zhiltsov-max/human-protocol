@@ -8,22 +8,25 @@ from src.core.types import OracleWebhookTypes, JobLauncherEventType
 
 from src.chain.escrow import validate_escrow
 import src.cvat.tasks as cvat
+from src.log import get_root_logger
 
 from src.models.webhook import Webhook
 import src.services.webhook as db_service
+from src.utils.logging import get_function_logger
 
 
-LOG_MODULE = "[cron][webhook][process_job_launcher_webhooks]"
+LOG_MODULE = "cron.webhook"
+module_logger = get_root_logger().getChild(LOG_MODULE)
 
 
-def process_job_launcher_webhooks() -> None:
+def process_job_launcher_webhooks():
     """
     Process incoming oracle webhooks
     """
+    logger = get_function_logger(module_logger)
 
     try:
-        logger = logging.getLogger("app")
-        logger.info(f"{LOG_MODULE} Starting cron job")
+        logger.info("Starting cron job")
 
         with SessionLocal.begin() as session:
             webhooks = db_service.inbox.get_pending_webhooks(
@@ -40,13 +43,10 @@ def process_job_launcher_webhooks() -> None:
 
                     db_service.inbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
-                    logger.exception(
-                        f"Oracle webhook {webhook.id} handling failed: {e}"
-                    )
+                    logger.exception(f"Webhook {webhook.id} handling failed: {e}")
                     db_service.inbox.handle_webhook_fail(session, webhook.id)
 
-        logger.info(f"{LOG_MODULE} Finishing cron job")
-        return None
+        logger.info("Finishing cron job")
     except Exception as e:
         logger.exception(e)
 
@@ -63,8 +63,7 @@ def handle_job_launcher_event(
                 # validate_escrow(webhook.chain_id, webhook.escrow_address)
 
                 logger.info(
-                    f"{LOG_MODULE} Creating a new CVAT project "
-                    f"(escrow_address={webhook.escrow_address})"
+                    f"Creating a new CVAT project (escrow_address={webhook.escrow_address})"
                 )
 
                 cvat.create_task(webhook.escrow_address, webhook.chain_id)
@@ -91,8 +90,7 @@ def handle_job_launcher_event(
                 # validate_escrow(webhook.chain_id, webhook.escrow_address)
 
                 logger.info(
-                    f"{LOG_MODULE} Removing a CVAT project "
-                    f"(escrow_address={webhook.escrow_address})"
+                    f"Removing a CVAT project (escrow_address={webhook.escrow_address})"
                 )
 
                 cvat.remove_task(webhook.escrow_address)

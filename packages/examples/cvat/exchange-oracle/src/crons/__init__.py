@@ -9,17 +9,10 @@ from src.crons.cvat_call_trackers import (
     track_assignments,
     retrieve_annotations,
 )
-from src.crons.process_job_launcher_webhooks import (
-    process_job_launcher_webhooks,
-)
+from src.crons.process_job_launcher_webhooks import process_job_launcher_webhooks
 from src.crons.process_recording_oracle_webhooks import (
     process_recording_oracle_webhooks,
 )
-
-import logging
-
-LOG_MODULE = "[cron][cvat][retrieve_annotations]"
-logger = logging.getLogger("app")
 
 
 def setup_cron_jobs(app: FastAPI):

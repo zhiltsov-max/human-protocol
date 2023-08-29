@@ -1,4 +1,3 @@
-import logging
 from typing import List
 
 from src.core.oracle_events import (
@@ -17,16 +16,18 @@ from src.core.types import (
     JobStatuses,
 )
 from src.handlers.annotation import prepare_annotation_metafile, FileDescriptor
+from src.log import get_root_logger
 import src.services.cvat as cvat_service
 import src.services.webhook as oracle_db_service
 import src.services.cloud.client as cloud_client
 import src.cvat.api_calls as cvat_api
 from src.cvat.tasks import cvat_dataset_export_format_mapping
 from src.utils.helpers import compose_output_annotation_filename
+from src.utils.logging import get_function_logger
 
 
-LOG_MODULE = "[cron][cvat]"
-logger = logging.getLogger("app")
+LOG_MODULE = "cron.cvat"
+module_logger = get_root_logger().getChild(LOG_MODULE)
 
 
 def track_completed_projects() -> None:
@@ -36,8 +37,10 @@ def track_completed_projects() -> None:
     2. Retrieves tasks related to this project
     3. If all tasks are completed -> updates project status to "completed"
     """
+    logger = get_function_logger(module_logger)
+
     try:
-        logger.info(f"{LOG_MODULE}[track_completed_projects] Starting cron job")
+        logger.info("Starting cron job")
         with SessionLocal.begin() as session:
             # Get active projects from db
             projects = cvat_service.get_projects_by_status(
@@ -57,10 +60,10 @@ def track_completed_projects() -> None:
                         session, project.id, ProjectStatuses.completed
                     )
 
-        logger.info(f"{LOG_MODULE}[track_completed_projects] Finishing cron job")
+        logger.info("Finishing cron job")
 
     except Exception as error:
-        logger.exception(f"{LOG_MODULE}[track_completed_projects] {error}")
+        logger.exception(error)
 
 
 def track_completed_tasks() -> None:
@@ -70,8 +73,10 @@ def track_completed_tasks() -> None:
     2. Retrieves jobs related to this task
     3. If all jobs are completed -> updates task status to "completed"
     """
+    logger = get_function_logger(module_logger)
+
     try:
-        logger.info(f"{LOG_MODULE}[track_completed_tasks] Starting cron job")
+        logger.info("Starting cron job")
         with SessionLocal.begin() as session:
             tasks = cvat_service.get_tasks_by_status(
                 session,
@@ -87,10 +92,10 @@ def track_completed_tasks() -> None:
                         session, task.id, TaskStatus.completed
                     )
 
-        logger.info(f"{LOG_MODULE}[track_completed_tasks] Finishing cron job")
+        logger.info("Finishing cron job")
 
     except Exception as error:
-        logger.exception(f"{LOG_MODULE}[track_completed_tasks] {error}")
+        logger.exception(error)
 
 
 def track_assignments() -> None:
@@ -100,36 +105,45 @@ def track_assignments() -> None:
     2. If an assignment is timed out, expires it
     3. If a project or task state is not "annotation", cancels assignments
     """
-    LOG_MESSAGE_PREFIX = f"{LOG_MODULE}[track_assignments] "
+    logger = get_function_logger(module_logger)
 
     try:
-        logger.info(f"{LOG_MESSAGE_PREFIX} Starting cron job")
+        logger.info("Starting cron job")
 
         with SessionLocal.begin() as session:
-            # Get active projects from db
-            assignments = cvat_service.get_active_expired_assignments(
+            assignments = cvat_service.get_unprocessed_expired_assignments(
                 session, limit=CronConfig.track_assignments_chunk_size
             )
 
             for assignment in assignments:
-                if assignment.is_finished and not assignment.finished_at:
-                    logger.info(
-                        f"{LOG_MESSAGE_PREFIX} "
-                        "Expiring the unfinished assignment {} (user {}, job id {})".format(
-                            assignment.id,
-                            assignment.user_wallet_id,
-                            assignment.cvat_job_id,
-                        )
+                logger.info(
+                    "Expiring the unfinished assignment {} (user {}, job id {})".format(
+                        assignment.id,
+                        assignment.user_wallet_id,
+                        assignment.cvat_job_id,
                     )
-                    cvat_service.expire_assignment(session, assignment.id)
+                )
+
+                latest_assignment = cvat_service.get_latest_assignment_by_cvat_job_id(
+                    session, assignment.cvat_job_id
+                )
+                if latest_assignment.id == assignment.id:
+                    # Avoid un-assigning if it's not the latest assignment
 
                     cvat_api.update_job_assignee(
                         assignment.cvat_job_id, assignee_id=None
-                    )  # maybe, can take too much time
+                    )  # note that calling it in a loop can take too much time
 
-                elif assignment.job.project.status != ProjectStatuses.annotation:
+                cvat_service.expire_assignment(session, assignment.id)
+
+        with SessionLocal.begin() as session:
+            assignments = cvat_service.get_active_assignments(
+                session, limit=CronConfig.track_assignments_chunk_size
+            )
+
+            for assignment in assignments:
+                if assignment.job.project.status != ProjectStatuses.annotation:
                     logger.warning(
-                        f"{LOG_MESSAGE_PREFIX} "
                         "Canceling the unfinished assignment {} (user {}, job id {}) - "
                         "the project state is not annotation".format(
                             assignment.id,
@@ -137,12 +151,25 @@ def track_assignments() -> None:
                             assignment.cvat_job_id,
                         )
                     )
-                    cvat_service.delete_assignment(session, assignment.id)
 
-        logger.info(f"{LOG_MESSAGE_PREFIX} Finishing cron job")
+                    latest_assignment = (
+                        cvat_service.get_latest_assignment_by_cvat_job_id(
+                            session, assignment.cvat_job_id
+                        )
+                    )
+                    if latest_assignment.id == assignment.id:
+                        # Avoid un-assigning if it's not the latest assignment
+
+                        cvat_api.update_job_assignee(
+                            assignment.cvat_job_id, assignee_id=None
+                        )  # note that calling it in a loop can take too much time
+
+                    cvat_service.cancel_assignment(session, assignment.id)
+
+        logger.info("Finishing cron job")
 
     except Exception as error:
-        logger.exception(f"{LOG_MESSAGE_PREFIX} {error}")
+        logger.exception(error)
 
 
 def retrieve_annotations() -> None:
@@ -153,8 +180,10 @@ def retrieve_annotations() -> None:
     3. Stores annotations in s3 bucket
     4. Prepares a webhook to recording oracle
     """
+    logger = get_function_logger(module_logger)
+
     try:
-        logger.info(f"{LOG_MODULE} Starting cron job")
+        logger.info("Starting cron job")
         with SessionLocal.begin() as session:
             # Get completed projects from db
             projects = cvat_service.get_projects_by_status(
@@ -256,10 +285,10 @@ def retrieve_annotations() -> None:
                     session, project.id, ProjectStatuses.recorded
                 )
 
-        logger.info(f"{LOG_MODULE} Finishing cron job")
+        logger.info("Finishing cron job")
 
     except Exception as error:
-        logger.exception(f"{LOG_MODULE} {error}")
+        logger.exception(error)
 
 
 def track_task_creation() -> None:
@@ -269,10 +298,10 @@ def track_task_creation() -> None:
 
     # TODO: maybe add load balancing (e.g. round-robin queue, shuffling)
 
-    logger_prefix = f"{LOG_MODULE}[track_task_creation]"
+    logger = get_function_logger(module_logger)
 
     try:
-        logger.info(f"{logger_prefix} Starting cron job")
+        logger.info("Starting cron job")
 
         with SessionLocal.begin() as session:
             # Get active projects from db
@@ -304,7 +333,7 @@ def track_task_creation() -> None:
 
             cvat_service.finish_uploads(session, failed + completed)
 
-        logger.info(f"{logger_prefix} Finishing cron job")
+        logger.info("Finishing cron job")
 
     except Exception as error:
-        logger.exception(f"{logger_prefix} {error}")
+        logger.exception(error)

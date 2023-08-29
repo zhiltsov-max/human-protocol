@@ -3,6 +3,8 @@
 import os
 from dotenv import load_dotenv
 
+from src.utils.logging import parse_log_level
+
 load_dotenv()
 
 
@@ -75,7 +77,7 @@ class CronConfig:
     )
     track_creating_tasks_int = int(os.environ.get("TRACK_CREATING_TASKS_INT", 300))
     track_assignments_int = int(os.environ.get("TRACK_ASSIGNMENTS_INT", 5))
-    track_assignments_chunk_size = os.environ.get("TRACK_ASSIGNMENTS_CHUNK_SIZE", 100)
+    track_assignments_chunk_size = os.environ.get("TRACK_ASSIGNMENTS_CHUNK_SIZE", 10)
 
     retrieve_annotations_int = int(os.environ.get("RETRIEVE_ANNOTATIONS_INT", 60))
     retrieve_annotations_chunk_size = os.environ.get(
@@ -119,6 +121,8 @@ class FeaturesConfig:
     )
     "Allows using a custom host in manifest bucket urls"
 
+
+class CoreConfig:
     default_assignment_time = int(os.environ.get("DEFAULT_ASSIGNMENT_TIME", 300))
 
 
@@ -132,6 +136,7 @@ class Config:
     workers_amount = int(os.environ.get("WORKERS_AMOUNT", 1))
     webhook_max_retries = int(os.environ.get("WEBHOOK_MAX_RETRIES", 5))
     webhook_delay_if_failed = int(os.environ.get("WEBHOOK_DELAY_IF_FAILED", 5))
+    loglevel = parse_log_level(os.environ.get("LOGLEVEL", "info"))
 
     polygon_mainnet = PolygonMainnetConfig
     polygon_mumbai = PolygonMumbaiConfig
@@ -144,3 +149,4 @@ class Config:
     cvat_config = CvatConfig
     storage_config = StorageConfig
     features = FeaturesConfig
+    core_config = CoreConfig

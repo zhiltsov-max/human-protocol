@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 
-from src.core.types import ProjectStatuses, TaskStatus, JobStatuses
+from src.core.types import AssignmentStatus, ProjectStatuses, TaskStatus, JobStatuses
 from src.models.cvat import Assignment, DataUpload, Project, Task, Job, User
 from src.utils.helpers import utcnow
 
@@ -22,6 +22,7 @@ def create_project(
     escrow_address: str,
     chain_id: int,
     bucket_url: str,
+    cvat_webhook_id: Optional[int] = None,
 ) -> str:
     """
     Create a project from CVAT.
@@ -36,6 +37,7 @@ def create_project(
         escrow_address=escrow_address,
         chain_id=chain_id,
         bucket_url=bucket_url,
+        cvat_webhook_id=cvat_webhook_id,
     )
 
     session.add(project)
@@ -81,7 +83,10 @@ def get_available_projects(
     ) -> ColumnExpressionArgument:
         if wallet_id:
             return expr | Project.jobs.any(
-                Job.assignment.has(Assignment.user_wallet_id == wallet_id)
+                Job.assignments.any(
+                    (Assignment.user_wallet_id == wallet_id)
+                    & (Assignment.status == AssignmentStatus.created)
+                )
             )
         return expr
 
@@ -90,7 +95,12 @@ def get_available_projects(
         .where(
             _maybe_assigned_to_the_user(
                 (Project.status == ProjectStatuses.annotation.value)
-                & Project.jobs.any(Job.assignment == None)
+                & Project.jobs.any(
+                    (Job.status == JobStatuses.new)
+                    & ~Job.assignments.any(
+                        Assignment.status == AssignmentStatus.created.value
+                    )
+                )
             )
         )
         .distinct()
@@ -298,14 +308,14 @@ def get_user_by_id(session: Session, wallet_id: str) -> Optional[User]:
 
 
 def create_assignment(
-    session: Session, wallet_id: str, cvat_job_id: int, closes_at: datetime
+    session: Session, wallet_id: str, cvat_job_id: int, expires_at: datetime
 ) -> str:
     obj_id = str(uuid.uuid4())
     assignment = Assignment(
         id=obj_id,
         user_wallet_id=wallet_id,
         cvat_job_id=cvat_job_id,
-        closes_at=closes_at,
+        expires_at=expires_at,
     )
 
     session.add(assignment)
@@ -317,35 +327,75 @@ def get_assignments_by_id(session: Session, ids: List[str]) -> List[Assignment]:
     return session.query(Assignment).where(Assignment.id.in_(ids)).all()
 
 
-def get_active_expired_assignments(
-    session: Session, limit: int = 100
+def get_latest_assignment_by_cvat_job_id(
+    session: Session, cvat_job_id: int
+) -> Optional[Assignment]:
+    return (
+        session.query(Assignment)
+        .where(Assignment.cvat_job_id == cvat_job_id)
+        .order_by(Assignment.created_at.desc())
+        .first()
+    )
+
+
+def get_unprocessed_expired_assignments(
+    session: Session, limit: int = 10
 ) -> List[Assignment]:
     return (
         session.query(Assignment)
-        .where((Assignment.finished_at == None) & (Assignment.closes_at <= utcnow()))
+        .where(
+            (Assignment.status == AssignmentStatus.created.value)
+            & (Assignment.completed_at == None)
+            & (Assignment.expires_at <= utcnow())
+        )
         .limit(limit)
         .all()
     )
 
 
-def update_assignment(session: Session, id: str, finished_at: datetime):
+def get_active_assignments(session: Session, limit: int = 10) -> List[Assignment]:
+    return (
+        session.query(Assignment)
+        .where(
+            (Assignment.status == AssignmentStatus.created.value)
+            & (Assignment.completed_at == None)
+            & (Assignment.expires_at <= utcnow())
+        )
+        .limit(limit)
+        .all()
+    )
+
+
+def update_assignment(
+    session: Session,
+    id: str,
+    *,
+    status: AssignmentStatus,
+    completed_at: Optional[datetime] = None
+):
     statement = (
-        update(Assignment).where(Assignment.id == id).values(finished_at=finished_at)
+        update(Assignment)
+        .where(Assignment.id == id)
+        .values(completed_at=completed_at, status=status.value)
     )
     session.execute(statement)
 
 
-def delete_assignment(session: Session, id: str):
-    statement = delete(Assignment).where(Assignment.id == id)
-    session.execute(statement)
+def cancel_assignment(session: Session, assignment_id: str):
+    update_assignment(session, assignment_id, status=AssignmentStatus.canceled)
 
 
 def expire_assignment(session: Session, assignment_id: str):
-    delete_assignment(session, assignment_id)
+    update_assignment(session, assignment_id, status=AssignmentStatus.expired)
 
 
-def complete_assignment(session: Session, assignment_id: str, finished_at: datetime):
-    update_assignment(session, assignment_id, finished_at=finished_at)
+def complete_assignment(session: Session, assignment_id: str, completed_at: datetime):
+    update_assignment(
+        session,
+        assignment_id,
+        completed_at=completed_at,
+        status=AssignmentStatus.completed,
+    )
 
 
 def get_user_assignments_in_cvat_projects(

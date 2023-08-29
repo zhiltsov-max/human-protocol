@@ -2,7 +2,7 @@ from datetime import timedelta
 from typing import Optional
 from src.db import SessionLocal
 
-from src.core.types import JobStatuses, PlatformType, ProjectStatuses
+from src.core.types import AssignmentStatus, JobStatuses, PlatformType, ProjectStatuses
 from src.schemas import exchange as service_api
 import src.models.cvat as models
 import src.cvat.api_calls as cvat_api
@@ -34,7 +34,7 @@ def serialize_task(
                     task_id=assignment.job.cvat_task_id, job_id=assignment.cvat_job_id
                 ),
                 started_at=assignment.created_at,
-                finishes_at=assignment.closes_at,
+                finishes_at=assignment.expires_at,
             )
 
         return service_api.TaskResponse(
@@ -67,6 +67,7 @@ def get_available_tasks(
                 wallet_id=wallet_id,
                 cvat_projects=[p.cvat_id for p in cvat_projects],
             )
+            if assignment.status == AssignmentStatus.created
         }
 
         for project in cvat_projects:
@@ -96,17 +97,17 @@ def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
             get_escrow_manifest(project.chain_id, project.escrow_address)
         )
 
-        project_jobs = project.jobs
         unassigned_job: Optional[models.Job] = None
         unfinished_assignments: list[models.Assignment] = []
-        for job in project_jobs:
-            if job.assignment and not job.assignment.is_finished:
-                unfinished_assignments.append(job.assignment)
+        for job in project.jobs:
+            job_assignment = job.latest_assignment
+            if job_assignment and not job_assignment.is_finished:
+                unfinished_assignments.append(job_assignment)
 
             if (
                 not unassigned_job
                 and job.status == JobStatuses.new
-                and (not job.assignment or not job.assignment.is_finished)
+                and (not job_assignment or job_assignment.is_finished)
             ):
                 unassigned_job = job
 
@@ -114,7 +115,7 @@ def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
         unfinished_user_assignments = [
             assignment
             for assignment in unfinished_assignments
-            if assignment.user_wallet_id == wallet_id and now < assignment.closes_at
+            if assignment.user_wallet_id == wallet_id and now < assignment.expires_at
         ]
         if unfinished_user_assignments:
             raise Exception(
@@ -128,14 +129,12 @@ def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
             session,
             wallet_id=user.wallet_id,
             cvat_job_id=unassigned_job.cvat_id,
-            closes_at=now + timedelta(seconds=manifest.annotation.max_time),
+            expires_at=now + timedelta(seconds=manifest.annotation.max_time),
         )
 
         cvat_api.clear_job_annotations(unassigned_job.cvat_id)
         cvat_api.restart_job(unassigned_job.cvat_id)
-        cvat_api.update_job_assignee(
-            id=unassigned_job.cvat_id, assignee_id=user.cvat_id
-        )
+        cvat_api.update_job_assignee(unassigned_job.cvat_id, assignee_id=user.cvat_id)
         # rollback is automatic within the transaction
 
     return assignment_id

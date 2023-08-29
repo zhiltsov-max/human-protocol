@@ -1,12 +1,13 @@
 # pylint: disable=too-few-public-methods
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
 
 from src.core.types import (
+    AssignmentStatus,
     ProjectStatuses,
     TaskStatus,
     JobStatuses,
@@ -29,6 +30,7 @@ class Project(Base):
     bucket_url = Column(String, unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    cvat_webhook_id = Column(Integer, nullable=True)
 
     tasks: Mapped[List["Task"]] = relationship(
         back_populates="project",
@@ -104,9 +106,17 @@ class Job(Base):
 
     task: Mapped["Task"] = relationship(back_populates="jobs")
     project: Mapped["Project"] = relationship(back_populates="jobs")
-    assignment: Mapped["Assignment"] = relationship(
-        back_populates="job", cascade="all, delete", passive_deletes=True
+    assignments: Mapped[List["Assignment"]] = relationship(
+        back_populates="job",
+        cascade="all, delete",
+        passive_deletes=True,
+        order_by="desc(Assignment.created_at)",
     )
+
+    @property
+    def latest_assignment(self) -> Optional[Assignment]:
+        assignments = self.assignments
+        return assignments[0] if assignments else None
 
     def __repr__(self):
         return f"Job. id={self.id}"
@@ -130,21 +140,31 @@ class Assignment(Base):
     __tablename__ = "assignments"
     id = Column(String, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    closes_at = Column(DateTime(timezone=True), nullable=False)
-    finished_at = Column(DateTime(timezone=True), nullable=True, server_default=None)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True, server_default=None)
     user_wallet_id = Column(
         String, ForeignKey("users.wallet_id", ondelete="CASCADE"), nullable=False
     )
     cvat_job_id = Column(
         Integer, ForeignKey("jobs.cvat_id", ondelete="CASCADE"), nullable=False
     )
+    status = Column(
+        String,
+        Enum(AssignmentStatus),
+        server_default=AssignmentStatus.created.value,
+        nullable=False,
+    )
 
     user: Mapped["User"] = relationship(back_populates="assignments")
-    job: Mapped["Job"] = relationship(back_populates="assignment")
+    job: Mapped["Job"] = relationship(back_populates="assignments")
 
     @property
     def is_finished(self) -> bool:
-        return self.finished_at or utcnow() > self.closes_at
+        return (
+            self.completed_at
+            or utcnow() > self.expires_at
+            or self.status != AssignmentStatus.created
+        )
 
     def __repr__(self):
         return (

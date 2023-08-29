@@ -1,16 +1,17 @@
-import logging
+from typing import List
+from dateutil.parser import parse as parse_aware_datetime
 from src.db import SessionLocal
-from src.core.types import CvatEventTypes, JobStatuses
+from src.core.types import AssignmentStatus, CvatEventTypes, JobStatuses
+from src.log import get_root_logger
 
+import src.models.cvat as models
 import src.services.cvat as cvat_service
 import src.cvat.api_calls as cvat_api
-from src.utils.helpers import utcnow
+from src.utils.logging import get_function_logger
 
 
 def handle_update_job_event(payload: dict) -> None:
-    logger = logging.getLogger(
-        __package__ + "." + __name__ + ".handle_update_job_event"
-    )
+    logger = get_function_logger(get_root_logger().getChild("handler"))
 
     with SessionLocal.begin() as session:
         job = cvat_service.get_job_by_cvat_id(session, payload.job["id"])
@@ -18,18 +19,46 @@ def handle_update_job_event(payload: dict) -> None:
             return
 
         if "state" in payload.before_update:
-            new_status = JobStatuses[payload.job["state"]]
+            job_assignments = job.assignments
 
-            if job.assignment and new_status == JobStatuses.completed:
-                if job.assignment.is_finished:
-                    if not job.assignment.finished_at:
+            if not job_assignments:
+                logger.warning(
+                    f"Received job #{job.cvat_id} status update: {new_status.value}. "
+                    "No assignments for this job, ignoring the update"
+                )
+            else:
+                new_status = JobStatuses(payload.job["state"])
+                webhook_time = parse_aware_datetime(payload.job["updated_date"])
+                webhook_assignee_id = (payload.job["assignee"] or {}).get("id")
+
+                job_assignments: List[models.Assignment] = sorted(
+                    job_assignments, key=lambda a: a.created_at, reverse=True
+                )
+                latest_assignment = job.assignments[0]
+                matching_assignment = next(
+                    (
+                        a
+                        for a in job_assignments
+                        if a.user.cvat_id == webhook_assignee_id
+                        if a.created_at < webhook_time
+                    ),
+                    None,
+                )
+
+                if not matching_assignment:
+                    logger.warning(
+                        f"Received job #{job.cvat_id} status update: {new_status.value}. "
+                        "Can't find a matching assignment, ignoring the update"
+                    )
+                elif matching_assignment.is_finished:
+                    if matching_assignment.status == AssignmentStatus.created:
                         logger.warning(
                             f"Received job #{job.cvat_id} status update: {new_status.value}. "
-                            "Assignment is expired, discarding the update"
+                            "Assignment is expired, rejecting the update"
                         )
-                        cvat_service.expire_assignment(session, job.assignment.id)
+                        cvat_service.expire_assignment(session, matching_assignment)
 
-                        if payload.job["assignee"]["id"] == job.assignment.user.cvat_id:
+                        if matching_assignment.id == latest_assignment.id:
                             cvat_api.update_job_assignee(job.cvat_id, assignee_id=None)
 
                     else:
@@ -37,30 +66,27 @@ def handle_update_job_event(payload: dict) -> None:
                             f"Received job #{job.cvat_id} status update: {new_status.value}. "
                             "Assignment is already finished, ignoring the update"
                         )
-
-                elif payload.job["assignee"]["id"] != job.assignment.user.cvat_id:
-                    logger.warning(
-                        f"Received job #{job.cvat_id} status update: {new_status.value}. "
-                        f"CVAT assignee ({payload.job['assignee']['id']}) mismatches "
-                        f"the assigned user ({job.assignment.user.cvat_id}), "
-                        "ignoring the update, discarding the assignment"
-                    )
-                    cvat_service.delete_assignment(session, job.assignment.id)
-
-                else:
+                elif (
+                    new_status == JobStatuses.completed
+                    and matching_assignment.id == latest_assignment.id
+                    and matching_assignment.status == AssignmentStatus.created
+                ):
                     logger.info(
                         f"Received job #{job.cvat_id} status update: {new_status.value}. "
                         "Completing the assignment"
                     )
                     cvat_service.complete_assignment(
-                        session, job.assignment.id, finished_at=utcnow()
+                        session, matching_assignment.id, completed_at=webhook_time
                     )
                     cvat_service.update_job_status(session, job.id, new_status)
 
-                    if payload.job["assignee"]["id"] == job.assignment.user.cvat_id:
-                        cvat_api.update_job_assignee(job.cvat_id, assignee_id=None)
-            elif not job.assignment and payload.job["assignee"]["id"]:
-                cvat_api.update_job_assignee(job.cvat_id, assignee_id=None)
+                    cvat_api.update_job_assignee(job.cvat_id, assignee_id=None)
+
+                else:
+                    logger.info(
+                        f"Received job #{job.cvat_id} status update: {new_status.value}. "
+                        "Ignoring the update"
+                    )
 
 
 def handle_create_job_event(payload: dict) -> None:

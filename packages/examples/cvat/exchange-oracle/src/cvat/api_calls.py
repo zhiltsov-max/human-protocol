@@ -1,16 +1,14 @@
 from enum import Enum
-import io
-from time import sleep
-import zipfile
-import xmltodict
-import logging
 from http import HTTPStatus
-from typing import Dict, List, Optional
+from time import sleep
+from typing import List, Optional
+import io
+import logging
+import zipfile
 
 from src.core.config import Config
 from cvat_sdk.api_client import Configuration, ApiClient, models, exceptions
 from cvat_sdk.core.helpers import get_paginated_collection
-from src.core.types import JobStatuses
 
 from src.utils.enums import BetterEnumMeta
 
@@ -92,7 +90,7 @@ def get_project_annotations(cvat_id: int, format_name: str) -> io.RawIOBase:
             raise
 
 
-def setup_cvat_webhooks(project_id: int) -> models.WebhookRead:
+def create_cvat_webhook(project_id: int) -> models.WebhookRead:
     logger = logging.getLogger("app")
     with get_api_client() as api_client:
         webhook_write_request = models.WebhookWriteRequest(

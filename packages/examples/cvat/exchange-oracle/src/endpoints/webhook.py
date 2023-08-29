@@ -11,10 +11,7 @@ from src.validators.signature import validate_oracle_webhook_signature
 router = APIRouter()
 
 
-@router.post(
-    "/oracle-webhook",
-    description="Consumes a webhook from an oracle",
-)
+@router.post("/oracle-webhook", description="Receives a webhook from an oracle")
 async def oracle_webhook(
     webhook: OracleWebhook,
     request: Request,

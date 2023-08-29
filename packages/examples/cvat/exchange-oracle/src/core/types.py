@@ -30,6 +30,7 @@ class TaskStatus(str, Enum, metaclass=BetterEnumMeta):
 class JobStatuses(str, Enum, metaclass=BetterEnumMeta):
     new = "new"
     in_progress = "in progress"
+    rejected = "rejected"
     completed = "completed"
 
 
@@ -79,3 +80,10 @@ class OracleWebhookStatuses(str, Enum, metaclass=BetterEnumMeta):
 
 class PlatformType(str, Enum, metaclass=BetterEnumMeta):
     CVAT = "cvat"
+
+
+class AssignmentStatus(str, Enum, metaclass=BetterEnumMeta):
+    created = "created"
+    completed = "completed"
+    expired = "expired"
+    canceled = "canceled"

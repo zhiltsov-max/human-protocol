@@ -6,10 +6,7 @@ from src.validators.signature import validate_cvat_signature
 router = APIRouter()
 
 
-@router.post(
-    "/cvat-webhook",
-    description="Consumes a webhook from a cvat",
-)
+@router.post("/cvat-webhook", description="Receives a webhook from CVAT")
 async def cvat_webhook(
     cvat_webhook: CvatWebhook,
     request: Request,

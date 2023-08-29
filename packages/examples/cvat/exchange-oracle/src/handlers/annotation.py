@@ -5,7 +5,7 @@ from typing import List, Dict, Callable
 from attrs import define
 
 from src.core.types import TaskType
-from src.models.cvat import Job, Project, Task
+from src.models.cvat import Job
 
 
 @define
@@ -62,7 +62,10 @@ def prepare_annotation_metafile(jobs: List[Job]) -> FileDescriptor:
 
     contents = dict(
         annotators=[
-            dict(job_id=job.cvat_id, annotator_wallet_id=job.assignment.user_wallet_id)
+            dict(
+                job_id=job.cvat_id,
+                annotator_wallet_id=job.latest_assignment.user_wallet_id,
+            )
             for job in jobs
         ]
     )
