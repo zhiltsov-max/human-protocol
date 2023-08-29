@@ -10,7 +10,7 @@ from src.core.types import (
     OracleWebhookSenderType,
 )
 from src.crons.process_recording_oracle_webhooks import (
-    process_recording_oracle_webhooks,
+    process_outgoing_recording_oracle_webhooks,
 )
 from src.models.webhook import Webhook
 from tests.utils.constants import DEFAULT_GAS_PAYER_PRIV
@@ -61,7 +61,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.add(webhook)
         self.session.commit()
 
-        process_recording_oracle_webhooks()
+        process_outgoing_recording_oracle_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -100,7 +100,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_recording_oracle_webhooks()
+            process_outgoing_recording_oracle_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -136,7 +136,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_recording_oracle_webhooks()
+            process_outgoing_recording_oracle_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -182,7 +182,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_recording_oracle_webhooks()
+            process_outgoing_recording_oracle_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))

@@ -110,18 +110,18 @@ def get_available_projects(
 
 
 def update_project_status(
-    session: Session, project_id: int, status: ProjectStatuses
+    session: Session, project_id: str, status: ProjectStatuses
 ) -> None:
     upd = update(Project).where(Project.id == project_id).values(status=status.value)
     session.execute(upd)
 
 
-def delete_project(session: Session, project_id: int) -> None:
+def delete_project(session: Session, project_id: str) -> None:
     project = session.query(Project).filter_by(id=project_id).first()
     session.delete(project)
 
 
-def is_project_completed(session: Session, project_id: int) -> bool:
+def is_project_completed(session: Session, project_id: str) -> bool:
     project = get_project_by_id(session, project_id)
     jobs = get_jobs_by_cvat_project_id(session, project.cvat_id)
     if len(jobs) > 0 and all(job.status == JobStatuses.completed.value for job in jobs):
@@ -248,11 +248,8 @@ def get_job_by_id(session: Session, job_id: str) -> Optional[Job]:
     return job
 
 
-def get_job_by_cvat_id(session: Session, cvat_id: int) -> Optional[Job]:
-    job_query = select(Job).where(Job.cvat_id == cvat_id)
-    job = session.execute(job_query).scalars().first()
-
-    return job
+def get_jobs_by_cvat_id(session: Session, cvat_ids: List[int]) -> List[Job]:
+    return session.query(Job).where(Job.cvat_id.in_(cvat_ids)).all()
 
 
 def update_job_status(session: Session, job_id: int, status: JobStatuses) -> None:

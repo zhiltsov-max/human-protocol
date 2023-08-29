@@ -21,7 +21,7 @@ module_logger = get_root_logger().getChild(LOG_MODULE)
 
 def process_job_launcher_webhooks():
     """
-    Process incoming oracle webhooks
+    Process incoming job launcher webhooks
     """
     logger = get_function_logger(module_logger)
 

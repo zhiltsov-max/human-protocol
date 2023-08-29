@@ -282,7 +282,7 @@ def retrieve_annotations() -> None:
                 )
 
                 cvat_service.update_project_status(
-                    session, project.id, ProjectStatuses.recorded
+                    session, project.id, ProjectStatuses.validation
                 )
 
         logger.info("Finishing cron job")

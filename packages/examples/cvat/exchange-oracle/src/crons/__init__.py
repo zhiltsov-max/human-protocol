@@ -11,7 +11,7 @@ from src.crons.cvat_call_trackers import (
 )
 from src.crons.process_job_launcher_webhooks import process_job_launcher_webhooks
 from src.crons.process_recording_oracle_webhooks import (
-    process_recording_oracle_webhooks,
+    process_outgoing_recording_oracle_webhooks,
 )
 
 
@@ -25,7 +25,7 @@ def setup_cron_jobs(app: FastAPI):
             seconds=Config.cron_config.process_job_launcher_webhooks_int,
         )
         scheduler.add_job(
-            process_recording_oracle_webhooks,
+            process_outgoing_recording_oracle_webhooks,
             "interval",
             seconds=Config.cron_config.process_recording_oracle_webhooks_int,
         )

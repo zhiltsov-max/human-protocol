@@ -19,6 +19,7 @@ class CvatEventTypes(str, Enum, metaclass=BetterEnumMeta):
 class ProjectStatuses(str, Enum, metaclass=BetterEnumMeta):
     annotation = "annotation"
     completed = "completed"
+    validation = "validation"
     recorded = "recorded"
 
 

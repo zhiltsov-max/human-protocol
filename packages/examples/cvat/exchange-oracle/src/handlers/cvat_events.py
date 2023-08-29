@@ -14,9 +14,11 @@ def handle_update_job_event(payload: dict) -> None:
     logger = get_function_logger(get_root_logger().getChild("handler"))
 
     with SessionLocal.begin() as session:
-        job = cvat_service.get_job_by_cvat_id(session, payload.job["id"])
-        if not job:
+        jobs = cvat_service.get_jobs_by_cvat_id(session, [payload.job["id"]])
+        if not jobs:
             return
+
+        job = jobs[0]
 
         if "state" in payload.before_update:
             job_assignments = job.assignments
@@ -91,9 +93,9 @@ def handle_update_job_event(payload: dict) -> None:
 
 def handle_create_job_event(payload: dict) -> None:
     with SessionLocal.begin() as session:
-        job = cvat_service.get_job_by_cvat_id(session, payload.job["id"])
+        jobs = cvat_service.get_jobs_by_cvat_id(session, [payload.job["id"]])
 
-        if not job:
+        if not jobs:
             cvat_service.create_job(
                 session,
                 payload.job["id"],
