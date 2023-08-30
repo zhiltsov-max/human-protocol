@@ -20,6 +20,7 @@ class ProjectStatuses(str, Enum, metaclass=BetterEnumMeta):
     annotation = "annotation"
     completed = "completed"
     validation = "validation"
+    canceled = "canceled"
     recorded = "recorded"
 
 

@@ -10,7 +10,7 @@ from src.core.types import (
     TaskStatus,
     JobStatuses,
 )
-from src.crons.cvat_call_trackers import track_completed_tasks
+from src.crons.state_trackers import track_completed_tasks
 from src.models.cvat import Project, Task, Job
 
 

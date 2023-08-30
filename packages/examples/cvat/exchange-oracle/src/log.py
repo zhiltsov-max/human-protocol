@@ -9,7 +9,10 @@ ROOT_LOGGER_NAME = "app"
 
 
 def setup_logging():
-    log_level_name = logging.getLevelName(Config.loglevel)
+    log_level_name = logging.getLevelName(
+        Config.loglevel
+        or (logging.DEBUG if Config.environment == "development" else logging.INFO)
+    )
 
     log_config = {
         "version": 1,
@@ -26,12 +29,7 @@ def setup_logging():
             "console": {"formatter": "default", "class": "logging.StreamHandler"},
         },
         "loggers": {
-            ROOT_LOGGER_NAME: {
-                "handlers": ["console"],
-                "level": "DEBUG"
-                if Config.environment == "development"
-                else log_level_name,
-            },
+            ROOT_LOGGER_NAME: {"handlers": ["console"], "level": log_level_name},
         },
     }
 

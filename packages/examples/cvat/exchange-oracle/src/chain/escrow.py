@@ -8,6 +8,9 @@ from src.chain.web3 import get_web3
 
 
 def validate_escrow(chain_id: int, escrow_address: str) -> None:
+    # TODO: remove mock
+    return
+
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
 
@@ -51,9 +54,26 @@ def get_escrow_manifest(chain_id: int, escrow_address: str) -> dict:
 
 
 def get_job_launcher_address(chain_id: int, escrow_address: str) -> str:
+    # TODO: remove mock
+    return "launcher"
+
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
 
     job_launcher_address = escrow_client.get_job_launcher_address(escrow_address)
 
     return job_launcher_address
+
+
+def get_recording_oracle_address(chain_id: int, escrow_address: str) -> str:
+    # TODO: remove mock
+    return "recor"
+
+    web3 = get_web3(chain_id)
+    escrow_client = EscrowClient(web3)
+
+    recording_oracle_address = escrow_client.get_recording_oracle_address(
+        escrow_address
+    )
+
+    return recording_oracle_address

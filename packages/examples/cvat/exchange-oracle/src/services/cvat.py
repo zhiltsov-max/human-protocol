@@ -67,7 +67,7 @@ def get_projects_by_status(
     projects = (
         session.query(Project)
         .where(
-            Project.status == status,
+            Project.status == status.value,
         )
         .limit(limit)
         .all()
@@ -76,16 +76,22 @@ def get_projects_by_status(
 
 
 def get_available_projects(
-    session: Session, wallet_id: Optional[str] = None, limit: int = 10
+    session: Session, wallet_address: Optional[str] = None, limit: int = 10
 ) -> List[Project]:
     def _maybe_assigned_to_the_user(
         expr: ColumnExpressionArgument,
     ) -> ColumnExpressionArgument:
-        if wallet_id:
+        if wallet_address:
             return expr | Project.jobs.any(
                 Job.assignments.any(
-                    (Assignment.user_wallet_id == wallet_id)
-                    & (Assignment.status == AssignmentStatus.created)
+                    (Assignment.user_wallet_address == wallet_address)
+                    & Assignment.status.in_(
+                        [
+                            AssignmentStatus.created,
+                            AssignmentStatus.completed,
+                            AssignmentStatus.canceled,
+                        ]
+                    )
                 )
             )
         return expr
@@ -205,7 +211,7 @@ def get_active_task_uploads_by_task_id(
     return session.query(DataUpload).where(DataUpload.task_id.in_(task_ids)).all()
 
 
-def get_active_task_uploads(session: Session, limit: int) -> List[DataUpload]:
+def get_active_task_uploads(session: Session, *, limit: int = 10) -> List[DataUpload]:
     return session.query(DataUpload).limit(limit).all()
 
 
@@ -282,7 +288,9 @@ def get_jobs_by_cvat_project_id(session: Session, cvat_project_id: int) -> List[
 # Users
 
 
-def put_user(session: Session, wallet_id: str, cvat_email: str, cvat_id: int) -> User:
+def put_user(
+    session: Session, wallet_address: str, cvat_email: str, cvat_id: int
+) -> User:
     """
     Bind a CVAT username to a HUMAN App user
     """
@@ -290,27 +298,27 @@ def put_user(session: Session, wallet_id: str, cvat_email: str, cvat_id: int) ->
         bool(cvat_email) ^ bool(cvat_id)
     ), "cvat_email and cvat_id cannot be used separately"
 
-    user = User(wallet_id=wallet_id, cvat_email=cvat_email, cvat_id=cvat_id)
+    user = User(wallet_address=wallet_address, cvat_email=cvat_email, cvat_id=cvat_id)
 
     session.merge(user)
 
     return user
 
 
-def get_user_by_id(session: Session, wallet_id: str) -> Optional[User]:
-    return session.query(User).where(User.wallet_id == wallet_id).first()
+def get_user_by_id(session: Session, wallet_address: str) -> Optional[User]:
+    return session.query(User).where(User.wallet_address == wallet_address).first()
 
 
 # Assignments
 
 
 def create_assignment(
-    session: Session, wallet_id: str, cvat_job_id: int, expires_at: datetime
+    session: Session, wallet_address: str, cvat_job_id: int, expires_at: datetime
 ) -> str:
     obj_id = str(uuid.uuid4())
     assignment = Assignment(
         id=obj_id,
-        user_wallet_id=wallet_id,
+        user_wallet_address=wallet_address,
         cvat_job_id=cvat_job_id,
         expires_at=expires_at,
     )
@@ -396,13 +404,13 @@ def complete_assignment(session: Session, assignment_id: str, completed_at: date
 
 
 def get_user_assignments_in_cvat_projects(
-    session: Session, wallet_id: int, cvat_projects: List[int]
+    session: Session, wallet_address: int, cvat_projects: List[int]
 ) -> List[Assignment]:
     return (
         session.query(Assignment)
         .where(
             Assignment.job.has(Job.cvat_project_id.in_(cvat_projects))
-            & (Assignment.user_wallet_id == wallet_id)
+            & (Assignment.user_wallet_address == wallet_address)
         )
         .all()
     )

@@ -2,15 +2,19 @@ from fastapi import FastAPI
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.core.config import Config
-from src.crons.cvat_call_trackers import (
+from src.crons.state_trackers import (
     track_completed_projects,
     track_completed_tasks,
     track_task_creation,
     track_assignments,
     retrieve_annotations,
 )
-from src.crons.process_job_launcher_webhooks import process_job_launcher_webhooks
+from src.crons.process_job_launcher_webhooks import (
+    process_incoming_job_launcher_webhooks,
+    process_outgoing_job_launcher_webhooks,
+)
 from src.crons.process_recording_oracle_webhooks import (
+    process_incoming_recording_oracle_webhooks,
     process_outgoing_recording_oracle_webhooks,
 )
 
@@ -20,9 +24,19 @@ def setup_cron_jobs(app: FastAPI):
     def cron_record():
         scheduler = BackgroundScheduler()
         scheduler.add_job(
-            process_job_launcher_webhooks,
+            process_incoming_job_launcher_webhooks,
             "interval",
             seconds=Config.cron_config.process_job_launcher_webhooks_int,
+        )
+        scheduler.add_job(
+            process_outgoing_job_launcher_webhooks,
+            "interval",
+            seconds=Config.cron_config.process_job_launcher_webhooks_int,
+        )
+        scheduler.add_job(
+            process_incoming_recording_oracle_webhooks,
+            "interval",
+            seconds=Config.cron_config.process_recording_oracle_webhooks_int,
         )
         scheduler.add_job(
             process_outgoing_recording_oracle_webhooks,

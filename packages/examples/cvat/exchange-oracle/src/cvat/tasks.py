@@ -19,19 +19,19 @@ import src.services.cloud as cloud_service
 import src.cvat.api_calls as cvat_api
 
 
-label_type_mapping = {
+LABEL_TYPE_MAPPING = {
     TaskType.image_label_binary: CvatLabelType.tag,
     TaskType.image_points: CvatLabelType.points,
     TaskType.image_boxes: CvatLabelType.rectangle,
 }
 
-dm_dataset_format_mapping = {
+DM_DATASET_FORMAT_MAPPING = {
     TaskType.image_label_binary: "cvat_images",
     TaskType.image_points: "coco_person_keypoints",
     TaskType.image_boxes: "coco_instances",
 }
 
-cvat_dataset_export_format_mapping = {
+CVAT_EXPORT_FORMAT_MAPPING = {
     TaskType.image_label_binary: "CVAT for images 1.1",
     TaskType.image_points: "COCO Keypoints 1.0",
     TaskType.image_boxes: "COCO 1.0",
@@ -47,7 +47,7 @@ def get_gt_filenames(
             f.write(gt_file_data)
 
         gt_dataset = dm.Dataset.import_from(
-            gt_filename, format=dm_dataset_format_mapping[manifest.annotation.type]
+            gt_filename, format=DM_DATASET_FORMAT_MAPPING[manifest.annotation.type]
         )
 
         gt_filenames = set(s.id + s.media.ext for s in gt_dataset)
@@ -106,7 +106,7 @@ def make_label_configuration(manifest: TaskManifest) -> List[dict]:
     return [
         {
             "name": label.name,
-            "type": label_type_mapping.get(manifest.annotation.type).value,
+            "type": LABEL_TYPE_MAPPING.get(manifest.annotation.type).value,
         }
         for label in manifest.annotation.labels
     ]

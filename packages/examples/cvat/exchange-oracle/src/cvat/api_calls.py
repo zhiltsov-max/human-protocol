@@ -1,7 +1,7 @@
 from enum import Enum
 from http import HTTPStatus
 from time import sleep
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import io
 import logging
 import zipfile
@@ -295,16 +295,16 @@ class UploadStatus(str, Enum, metaclass=BetterEnumMeta):
     FAILED = "Failed"
 
 
-def get_task_upload_status(cvat_id: int) -> Optional[UploadStatus]:
+def get_task_upload_status(cvat_id: int) -> Tuple[Optional[UploadStatus], str]:
     logger = logging.getLogger("app")
 
     with get_api_client() as api_client:
         try:
             (status, _) = api_client.tasks_api.retrieve_status(cvat_id)
-            return UploadStatus(status.state.value)
+            return UploadStatus(status.state.value), status.message
         except exceptions.ApiException as e:
             if e.status == 404:
-                return None
+                return None, e.body
 
             logger.exception(f"Exception when calling ProjectsApi.list(): {e}\n")
             raise

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import AnyUrl, BaseModel, Field
 
-from src.core.types import TaskType, PlatformType
+from src.core.types import ProjectStatuses, TaskType, PlatformType
 
 
 class AssignmentResponse(BaseModel):
@@ -22,10 +22,11 @@ class TaskResponse(BaseModel):
     job_time_limit: int
     job_type: TaskType
     assignment: Optional[AssignmentResponse] = None
+    status: ProjectStatuses
 
 
 class UserRequest(BaseModel):
-    wallet_id: str = Field(min_length=1)
+    wallet_address: str = Field(min_length=1)
     cvat_email: str = Field(min_length=1)
 
 

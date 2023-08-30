@@ -16,11 +16,11 @@ router = APIRouter()
 
 @router.get("/tasks", description="Lists available tasks")
 async def list_tasks(
-    wallet_id: Optional[str] = Query(default=None),
+    wallet_address: Optional[str] = Query(default=None),
     signature: str = Header(description="Calling service signature"),
 ) -> list[TaskResponse]:
     await validate_human_app_signature(signature)
-    return oracle_service.get_available_tasks(wallet_id=wallet_id)
+    return oracle_service.get_available_tasks(wallet_address=wallet_address)
 
 
 @router.put("/register", description="Binds a CVAT user a to HUMAN App user")
@@ -48,7 +48,7 @@ async def register(
         with SessionLocal.begin() as session:
             user = cvat_service.put_user(
                 session,
-                wallet_id=user.wallet_id,
+                wallet_address=user.wallet_address,
                 cvat_email=user.cvat_email,
                 cvat_id=cvat_id,
             )
@@ -60,7 +60,9 @@ async def register(
         raise
 
     return UserResponse(
-        wallet_id=user.wallet_id, cvat_email=user.cvat_email, cvat_id=user.cvat_id
+        wallet_address=user.wallet_address,
+        cvat_email=user.cvat_email,
+        cvat_id=user.cvat_id,
     )
 
 
@@ -69,13 +71,22 @@ async def register(
     description="Start an assignment within the task for the annotator",
 )
 async def create_assignment(
-    wallet_id: str,
+    wallet_address: str,
     project_id: str = Query(alias="id"),
     signature: str = Header(description="Calling service signature"),
 ) -> TaskResponse:
     await validate_human_app_signature(signature)
 
-    assignment_id = oracle_service.create_assignment(
-        project_id=project_id, wallet_id=wallet_id
-    )
+    try:
+        assignment_id = oracle_service.create_assignment(
+            project_id=project_id, wallet_address=wallet_address
+        )
+    except oracle_service.UserHasUnfinishedAssignmentError as e:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(e)) from e
+
+    if not assignment_id:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="No assignments available"
+        )
+
     return oracle_service.serialize_task(project_id, assignment_id=assignment_id)

@@ -80,11 +80,15 @@ def get_type_tag_for_event_class(event_class: Type[OracleEvent]) -> EventTypeTag
 def parse_event(
     sender: OracleWebhookTypes, event_type: str, event_data: Optional[dict] = None
 ) -> OracleEvent:
-    if sender == OracleWebhookTypes.job_launcher:
-        if not event_type in JobLauncherEventType:
-            raise ValueError(f"Unknown event '{sender}.{event_type}'")
-    elif sender == OracleWebhookTypes.recording_oracle:
-        if not event_type in RecordingOracleEventType:
+    sender_events_mapping = {
+        OracleWebhookTypes.job_launcher: JobLauncherEventType,
+        OracleWebhookTypes.recording_oracle: RecordingOracleEventType,
+        OracleWebhookTypes.exchange_oracle: ExchangeOracleEventType,
+    }
+
+    sender_events = sender_events_mapping.get(sender)
+    if sender_events is not None:
+        if not event_type in sender_events:
             raise ValueError(f"Unknown event '{sender}.{event_type}'")
     else:
         assert False, f"Unknown event sender type '{sender}'"

@@ -5,7 +5,7 @@ from sqlalchemy.sql import select
 from src.core.types import Networks
 from src.db import SessionLocal
 from src.core.types import TaskType, ProjectStatuses, TaskStatus
-from src.crons.cvat_call_trackers import track_completed_projects
+from src.crons.state_trackers import track_completed_projects
 from src.models.cvat import Project, Task
 
 

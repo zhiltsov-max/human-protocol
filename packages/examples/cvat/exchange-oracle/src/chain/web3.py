@@ -62,6 +62,9 @@ def sign_message(chain_id: Networks, message) -> str:
 
 
 def recover_signer(chain_id: Networks, message, signature: str) -> str:
+    # TODO: remove mock
+    return signature
+
     w3 = get_web3(chain_id)
     message_hash = encode_defunct(text=str(message))
     signer = w3.eth.account.recover_message(message_hash, signature=signature)

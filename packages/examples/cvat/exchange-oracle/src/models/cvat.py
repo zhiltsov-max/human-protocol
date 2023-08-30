@@ -124,7 +124,7 @@ class Job(Base):
 
 class User(Base):
     __tablename__ = "users"
-    wallet_id = Column(String, primary_key=True, index=True, nullable=False)
+    wallet_address = Column(String, primary_key=True, index=True, nullable=False)
     cvat_email = Column(String, unique=True, index=True, nullable=True)
     cvat_id = Column(Integer, unique=True, index=True, nullable=True)
 
@@ -133,7 +133,7 @@ class User(Base):
     )
 
     def __repr__(self):
-        return f"User. wallet_id={self.wallet_id} cvat_id={self.cvat_id}"
+        return f"User. wallet_address={self.wallet_address} cvat_id={self.cvat_id}"
 
 
 class Assignment(Base):
@@ -142,8 +142,8 @@ class Assignment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True, server_default=None)
-    user_wallet_id = Column(
-        String, ForeignKey("users.wallet_id", ondelete="CASCADE"), nullable=False
+    user_wallet_address = Column(
+        String, ForeignKey("users.wallet_address", ondelete="CASCADE"), nullable=False
     )
     cvat_job_id = Column(
         Integer, ForeignKey("jobs.cvat_id", ondelete="CASCADE"), nullable=False

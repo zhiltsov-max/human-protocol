@@ -69,7 +69,7 @@ def compose_bucket_url(
             return f"https://{bucket_name}.{bucket_host or 'storage.googleapis.com'}/"
 
 
-def prepare_recording_oracle_webhook_body(
+def prepare_outgoing_webhook_body(
     escrow_address: str,
     chain_id: Networks,
     event_type: str,
@@ -82,8 +82,7 @@ def prepare_recording_oracle_webhook_body(
     match event_type:
         case ExchangeOracleEventType.task_finished:
             event = cast(ExchangeOracleEvent_TaskFinished, event)
-            body["task_id"] = event.task_id
-            body["s3_url"] = event.s3_url
+            assert event.dict() == {}
 
         case _:
             assert False, f"Unexpected event {event_type} for recoding oracle"

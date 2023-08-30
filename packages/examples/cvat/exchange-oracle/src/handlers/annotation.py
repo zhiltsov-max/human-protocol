@@ -15,6 +15,7 @@ class FileDescriptor:
 
 
 ANNOTATION_METAFILE_NAME = "annotators.json"
+RESULTING_ANNOTATIONS_FILE = "resulting_annotations.zip"
 
 
 def process_image_label_binary_raw_annotations(
@@ -64,7 +65,7 @@ def prepare_annotation_metafile(jobs: List[Job]) -> FileDescriptor:
         annotators=[
             dict(
                 job_id=job.cvat_id,
-                annotator_wallet_id=job.latest_assignment.user_wallet_id,
+                annotator_wallet_address=job.latest_assignment.user_wallet_address,
             )
             for job in jobs
         ]

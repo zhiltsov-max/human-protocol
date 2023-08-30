@@ -4,14 +4,16 @@ from src.core.oracle_events import ExchangeOracleEvent_TaskCreationFailed
 from src.db import SessionLocal
 
 from src.core.config import CronConfig
-from src.core.types import OracleWebhookTypes, JobLauncherEventType
+from src.core.types import OracleWebhookTypes, JobLauncherEventType, ProjectStatuses
 
 from src.chain.escrow import validate_escrow
 import src.cvat.tasks as cvat
 from src.log import get_root_logger
 
 from src.models.webhook import Webhook
-import src.services.webhook as db_service
+import src.services.cvat as cvat_db_service
+import src.services.webhook as oracle_db_service
+from src.utils.helpers import prepare_outgoing_webhook_body, prepare_signed_message
 from src.utils.logging import get_function_logger
 
 
@@ -19,17 +21,17 @@ LOG_MODULE = "cron.webhook"
 module_logger = get_root_logger().getChild(LOG_MODULE)
 
 
-def process_job_launcher_webhooks():
+def process_incoming_job_launcher_webhooks():
     """
     Process incoming job launcher webhooks
     """
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
 
         with SessionLocal.begin() as session:
-            webhooks = db_service.inbox.get_pending_webhooks(
+            webhooks = oracle_db_service.inbox.get_pending_webhooks(
                 session,
                 OracleWebhookTypes.job_launcher,
                 CronConfig.process_job_launcher_webhooks_chunk_size,
@@ -41,14 +43,14 @@ def process_job_launcher_webhooks():
                         webhook, db_session=session, logger=logger
                     )
 
-                    db_service.inbox.handle_webhook_success(session, webhook.id)
+                    oracle_db_service.inbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} handling failed: {e}")
-                    db_service.inbox.handle_webhook_fail(session, webhook.id)
-
-        logger.info("Finishing cron job")
+                    oracle_db_service.inbox.handle_webhook_fail(session, webhook.id)
     except Exception as e:
         logger.exception(e)
+    finally:
+        logger.debug("Finishing cron job")
 
 
 def handle_job_launcher_event(
@@ -74,7 +76,7 @@ def handle_job_launcher_event(
                 except Exception as ex_remove:
                     logger.exception(ex_remove)
 
-                db_service.outbox.create_webhook(
+                oracle_db_service.outbox.create_webhook(
                     session=db_session,
                     escrow_address=webhook.escrow_address,
                     chain_id=webhook.chain_id,
@@ -89,14 +91,87 @@ def handle_job_launcher_event(
                 # TODO: enable validation
                 # validate_escrow(webhook.chain_id, webhook.escrow_address)
 
-                logger.info(
-                    f"Removing a CVAT project (escrow_address={webhook.escrow_address})"
+                project = cvat_db_service.get_project_by_escrow_address(
+                    db_session, webhook.escrow_address
                 )
+                if not project:
+                    logger.error(
+                        "Received escrow cancel event "
+                        f"(escrow_address={webhook.escrow_address}). "
+                        "The project doesn't exist, ignoring"
+                    )
+                    return
 
-                cvat.remove_task(webhook.escrow_address)
+                if project.status in [
+                    ProjectStatuses.canceled,
+                    ProjectStatuses.recorded,
+                ]:
+                    logger.error(
+                        "Received escrow cancel event "
+                        f"(escrow_address={webhook.escrow_address}). "
+                        "The project already finished, ignoring"
+                    )
+                    return
+
+                logger.info(
+                    f"Received escrow cancel event (escrow_address={webhook.escrow_address}). "
+                    "Canceling the project"
+                )
+                cvat_db_service.update_project_status(
+                    db_session, ProjectStatuses.canceled
+                )
 
             except Exception as ex:
                 raise
 
         case _:
             assert False, f"Unknown job launcher event {webhook.event_type}"
+
+
+def process_outgoing_job_launcher_webhooks():
+    """
+    Process webhooks that needs to be sent to recording oracle:
+      * Retrieves `webhook_url` from KVStore
+      * Sends webhook to recording oracle
+    """
+    logger = get_function_logger(module_logger)
+
+    try:
+        logger.debug("Starting cron job")
+
+        with SessionLocal.begin() as session:
+            webhooks = oracle_db_service.outbox.get_pending_webhooks(
+                session,
+                OracleWebhookTypes.job_launcher,
+                CronConfig.process_job_launcher_webhooks_chunk_size,
+            )
+            for webhook in webhooks:
+                try:
+                    body = prepare_outgoing_webhook_body(
+                        webhook.escrow_address,
+                        webhook.chain_id,
+                        webhook.event_type,
+                        webhook.event_data,
+                    )
+                    serialized_data, signature = prepare_signed_message(
+                        webhook.escrow_address, webhook.chain_id, body=body
+                    )
+
+                    headers = {"human-signature": signature}
+                    # TODO: restore
+                    # webhook_url = get_job_launcher_url(
+                    #     webhook.chain_id, webhook.escrow_address
+                    # )
+                    # with httpx.Client() as client:
+                    #     response = client.post(
+                    #         webhook_url, headers=headers, data=serialized_data
+                    #     )
+                    #     response.raise_for_status()
+                    oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
+                except Exception as e:
+                    logger.exception(f"Webhook {webhook.id} sending failed: {e}")
+                    oracle_db_service.outbox.handle_webhook_fail(session, webhook.id)
+    except Exception as e:
+        logger.exception(e)
+    finally:
+        logger.debug("Finishing cron job")

@@ -15,13 +15,17 @@ from src.core.types import (
     TaskStatus,
     JobStatuses,
 )
-from src.handlers.annotation import prepare_annotation_metafile, FileDescriptor
+from src.handlers.annotation import (
+    RESULTING_ANNOTATIONS_FILE,
+    prepare_annotation_metafile,
+    FileDescriptor,
+)
 from src.log import get_root_logger
 import src.services.cvat as cvat_service
 import src.services.webhook as oracle_db_service
 import src.services.cloud.client as cloud_client
 import src.cvat.api_calls as cvat_api
-from src.cvat.tasks import cvat_dataset_export_format_mapping
+from src.cvat.tasks import CVAT_EXPORT_FORMAT_MAPPING
 from src.utils.helpers import compose_output_annotation_filename
 from src.utils.logging import get_function_logger
 
@@ -40,7 +44,7 @@ def track_completed_projects() -> None:
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
         with SessionLocal.begin() as session:
             # Get active projects from db
             projects = cvat_service.get_projects_by_status(
@@ -59,11 +63,10 @@ def track_completed_projects() -> None:
                     cvat_service.update_project_status(
                         session, project.id, ProjectStatuses.completed
                     )
-
-        logger.info("Finishing cron job")
-
     except Exception as error:
         logger.exception(error)
+    finally:
+        logger.debug("Finishing cron job")
 
 
 def track_completed_tasks() -> None:
@@ -76,7 +79,7 @@ def track_completed_tasks() -> None:
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
         with SessionLocal.begin() as session:
             tasks = cvat_service.get_tasks_by_status(
                 session,
@@ -91,11 +94,10 @@ def track_completed_tasks() -> None:
                     cvat_service.update_task_status(
                         session, task.id, TaskStatus.completed
                     )
-
-        logger.info("Finishing cron job")
-
     except Exception as error:
         logger.exception(error)
+    finally:
+        logger.debug("Finishing cron job")
 
 
 def track_assignments() -> None:
@@ -108,7 +110,7 @@ def track_assignments() -> None:
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
 
         with SessionLocal.begin() as session:
             assignments = cvat_service.get_unprocessed_expired_assignments(
@@ -119,7 +121,7 @@ def track_assignments() -> None:
                 logger.info(
                     "Expiring the unfinished assignment {} (user {}, job id {})".format(
                         assignment.id,
-                        assignment.user_wallet_id,
+                        assignment.user_wallet_address,
                         assignment.cvat_job_id,
                     )
                 )
@@ -147,7 +149,7 @@ def track_assignments() -> None:
                         "Canceling the unfinished assignment {} (user {}, job id {}) - "
                         "the project state is not annotation".format(
                             assignment.id,
-                            assignment.user_wallet_id,
+                            assignment.user_wallet_address,
                             assignment.cvat_job_id,
                         )
                     )
@@ -165,11 +167,10 @@ def track_assignments() -> None:
                         )  # note that calling it in a loop can take too much time
 
                     cvat_service.cancel_assignment(session, assignment.id)
-
-        logger.info("Finishing cron job")
-
     except Exception as error:
         logger.exception(error)
+    finally:
+        logger.debug("Finishing cron job")
 
 
 def retrieve_annotations() -> None:
@@ -183,12 +184,12 @@ def retrieve_annotations() -> None:
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
         with SessionLocal.begin() as session:
             # Get completed projects from db
             projects = cvat_service.get_projects_by_status(
                 session,
-                ProjectStatuses.completed.value,
+                ProjectStatuses.completed,
                 limit=CronConfig.retrieve_annotations_chunk_size,
             )
 
@@ -207,7 +208,7 @@ def retrieve_annotations() -> None:
                     session, project.cvat_id
                 )
 
-                annotation_format = cvat_dataset_export_format_mapping[project.job_type]
+                annotation_format = CVAT_EXPORT_FORMAT_MAPPING[project.job_type]
                 annotation_files: List[FileDescriptor] = []
 
                 # Collect raw annotations from CVAT, validate and convert them
@@ -230,28 +231,13 @@ def retrieve_annotations() -> None:
                 )
                 annotation_files.append(
                     FileDescriptor(
-                        filename=f"project_{project.cvat_id}.zip",
+                        filename=RESULTING_ANNOTATIONS_FILE,
                         file=project_annotations_file,
                     )
                 )
 
                 annotation_metafile = prepare_annotation_metafile(jobs=jobs)
                 annotation_files.append(annotation_metafile)
-
-                # TODO: can switch to StorageClient once binary files are supported
-                # Upload file with annotations to s3 storage
-                # storage_client = StorageClient(
-                #     StorageConfig.endpoint_url,
-                #     StorageConfig.region,
-                #     Credentials(
-                #         StorageConfig.access_key,
-                #         StorageConfig.secret_key,
-                #     ),
-                #     StorageConfig.secure,
-                # )
-                # files = storage_client.upload_files(
-                #     annotation_files, StorageConfig.results_bucket_name
-                # )
 
                 storage_client = cloud_client.S3Client(
                     StorageConfig.endpoint_url,
@@ -269,8 +255,7 @@ def retrieve_annotations() -> None:
                             ),
                             file_descriptor.file.read(),
                         )
-                    except Exception as e:
-                        # if already_exist: skip
+                    except Exception:
                         raise
 
                 oracle_db_service.outbox.create_webhook(
@@ -284,11 +269,10 @@ def retrieve_annotations() -> None:
                 cvat_service.update_project_status(
                     session, project.id, ProjectStatuses.validation
                 )
-
-        logger.info("Finishing cron job")
-
     except Exception as error:
         logger.exception(error)
+    finally:
+        logger.debug("Finishing cron job")
 
 
 def track_task_creation() -> None:
@@ -296,15 +280,14 @@ def track_task_creation() -> None:
     Checks task creation status to report failed tasks and continue task creation process.
     """
 
-    # TODO: maybe add load balancing (e.g. round-robin queue, shuffling)
-
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
 
         with SessionLocal.begin() as session:
-            # Get active projects from db
+            # TODO: maybe add load balancing (e.g. round-robin queue, shuffling)
+            # to avoid blocking new tasks
             uploads = cvat_service.get_active_task_uploads(
                 session,
                 limit=CronConfig.track_creating_tasks_chunk_size,
@@ -313,7 +296,7 @@ def track_task_creation() -> None:
             completed = []
             failed = []
             for upload in uploads:
-                status = cvat_api.get_task_upload_status(upload.task_id)
+                status, reason = cvat_api.get_task_upload_status(upload.task_id)
                 if not status or status == cvat_api.UploadStatus.FAILED:
                     failed.append(upload)
 
@@ -324,16 +307,13 @@ def track_task_creation() -> None:
                         escrow_address=project.escrow_address,
                         chain_id=project.chain_id,
                         type=OracleWebhookTypes.job_launcher,
-                        event=ExchangeOracleEvent_TaskCreationFailed(
-                            reason=""  # TODO: add error details
-                        ),
+                        event=ExchangeOracleEvent_TaskCreationFailed(reason=reason),
                     )
                 elif status == cvat_api.UploadStatus.FINISHED:
                     completed.append(upload)
 
             cvat_service.finish_uploads(session, failed + completed)
-
-        logger.info("Finishing cron job")
-
     except Exception as error:
         logger.exception(error)
+    finally:
+        logger.debug("Finishing cron job")

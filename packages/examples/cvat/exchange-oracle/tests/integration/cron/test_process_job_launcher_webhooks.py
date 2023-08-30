@@ -11,7 +11,7 @@ from src.core.types import (
     OracleWebhookSenderType,
 )
 from src.crons.process_job_launcher_webhooks import (
-    process_job_launcher_webhooks,
+    process_incoming_job_launcher_webhooks,
 )
 from src.models.webhook import Webhook
 from tests.utils.constants import DEFAULT_GAS_PAYER_PRIV
@@ -60,7 +60,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.add(webhook)
         self.session.commit()
 
-        process_job_launcher_webhooks()
+        process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -98,7 +98,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_job_launcher_webhooks()
+            process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -133,7 +133,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_job_launcher_webhooks()
+            process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -169,7 +169,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_job_launcher_webhooks()
+            process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -205,7 +205,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_job_launcher_webhooks()
+            process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -244,7 +244,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_job_launcher_webhooks()
+            process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))
@@ -287,7 +287,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.session.commit()
 
         with self.assertLogs(level="ERROR") as cm:
-            process_job_launcher_webhooks()
+            process_incoming_job_launcher_webhooks()
 
         updated_webhook = (
             self.session.execute(select(Webhook).where(Webhook.id == webhok_id))

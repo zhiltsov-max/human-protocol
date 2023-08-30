@@ -48,23 +48,24 @@ def serialize_task(
             job_type=project.job_type,
             platform=PlatformType.CVAT,
             assignment=serialized_assignment,
+            status=project.status,
         )
 
 
 def get_available_tasks(
-    wallet_id: Optional[str] = None,
+    wallet_address: Optional[str] = None,
 ) -> list[service_api.TaskResponse]:
     results = []
 
     with SessionLocal.begin() as session:
         cvat_projects = cvat_service.get_available_projects(
-            session, wallet_id=wallet_id
+            session, wallet_address=wallet_address
         )
         user_assignments = {
             assignment.job.project.id: assignment
             for assignment in cvat_service.get_user_assignments_in_cvat_projects(
                 session,
-                wallet_id=wallet_id,
+                wallet_address=wallet_address,
                 cvat_projects=[p.cvat_id for p in cvat_projects],
             )
             if assignment.status == AssignmentStatus.created
@@ -81,10 +82,14 @@ def get_available_tasks(
     return results
 
 
-def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
+class UserHasUnfinishedAssignmentError(Exception):
+    pass
+
+
+def create_assignment(project_id: int, wallet_address: str) -> Optional[str]:
     with SessionLocal.begin() as session:
         user = get_or_404(
-            cvat_service.get_user_by_id(session, wallet_id), wallet_id, "user"
+            cvat_service.get_user_by_id(session, wallet_address), wallet_address, "user"
         )
         project = get_or_404(
             cvat_service.get_project_by_id(session, project_id), project_id, "task"
@@ -115,10 +120,11 @@ def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
         unfinished_user_assignments = [
             assignment
             for assignment in unfinished_assignments
-            if assignment.user_wallet_id == wallet_id and now < assignment.expires_at
+            if assignment.user_wallet_address == wallet_address
+            and now < assignment.expires_at
         ]
         if unfinished_user_assignments:
-            raise Exception(
+            raise UserHasUnfinishedAssignmentError(
                 "The user already has an unfinished assignment in this project"
             )
 
@@ -127,7 +133,7 @@ def create_assignment(project_id: int, wallet_id: str) -> Optional[str]:
 
         assignment_id = cvat_service.create_assignment(
             session,
-            wallet_id=user.wallet_id,
+            wallet_address=user.wallet_address,
             cvat_job_id=unassigned_job.cvat_id,
             expires_at=now + timedelta(seconds=manifest.annotation.max_time),
         )

@@ -19,7 +19,7 @@ from src.core.types import (
 from src.log import get_root_logger
 from src.models.webhook import Webhook
 from src.utils.helpers import (
-    prepare_recording_oracle_webhook_body,
+    prepare_outgoing_webhook_body,
     prepare_signed_message,
 )
 
@@ -39,7 +39,7 @@ def process_incoming_recording_oracle_webhooks():
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
 
         with SessionLocal.begin() as session:
             webhooks = oracle_db_service.inbox.get_pending_webhooks(
@@ -58,10 +58,10 @@ def process_incoming_recording_oracle_webhooks():
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} handling failed: {e}")
                     oracle_db_service.inbox.handle_webhook_fail(session, webhook.id)
-
-        logger.info("Finishing cron job")
     except Exception as e:
         logger.exception(e)
+    finally:
+        logger.debug("Finishing cron job")
 
 
 def handle_recording_oracle_event(
@@ -74,25 +74,32 @@ def handle_recording_oracle_event(
             project = cvat_db_service.get_project_by_escrow_address(
                 db_session, webhook.escrow_address
             )
-
-            if project.status == ProjectStatuses.validation:
-                new_status = ProjectStatuses.recorded
-                logger.info(
-                    "Changing project status to {} (escrow_address={})".format(
-                        new_status, webhook.escrow_address
+            if not project:
+                logger.error(
+                    "Unexpected event {} received for an unknown project, "
+                    "ignoring (escrow_address={})".format(
+                        webhook.event_type, webhook.escrow_address
                     )
                 )
+                return
 
-                cvat_db_service.update_project_status(
-                    db_session, project.id, new_status
-                )
-            else:
+            if project.status != ProjectStatuses.validation:
                 logger.error(
                     "Unexpected event {} received for a project in the {} status, "
                     "ignoring (escrow_address={})".format(
                         webhook.event_type, project.status, webhook.escrow_address
                     )
                 )
+                return
+
+            new_status = ProjectStatuses.recorded
+            logger.info(
+                "Changing project status to {} (escrow_address={})".format(
+                    new_status, webhook.escrow_address
+                )
+            )
+
+            cvat_db_service.update_project_status(db_session, project.id, new_status)
 
         case RecordingOracleEventType.task_rejected:
             event = RecordingOracleEvent_TaskRejected.parse_obj(webhook.event_data)
@@ -101,34 +108,33 @@ def handle_recording_oracle_event(
                 db_session, webhook.escrow_address
             )
 
-            if project.status == ProjectStatuses.validation:
-                rejected_jobs = cvat_db_service.get_jobs_by_cvat_id(
-                    db_session, event.rejected_job_ids
-                )
-
-                tasks_to_update = set()
-
-                for job in rejected_jobs:
-                    tasks_to_update.add(job.task.id)
-                    cvat_db_service.update_job_status(
-                        db_session, job.id, JobStatuses.new
-                    )
-
-                for task_id in tasks_to_update:
-                    cvat_db_service.update_task_status(
-                        db_session, task_id, TaskStatus.annotation
-                    )
-
-                cvat_db_service.update_project_status(
-                    db_session, project.id, ProjectStatuses.annotation
-                )
-            else:
+            if project.status != ProjectStatuses.validation:
                 logger.error(
                     "Unexpected event {} received for a project in the {} status, "
                     "ignoring (escrow_address={})".format(
                         webhook.event_type, project.status, webhook.escrow_address
                     )
                 )
+                return
+
+            rejected_jobs = cvat_db_service.get_jobs_by_cvat_id(
+                db_session, event.rejected_job_ids
+            )
+
+            tasks_to_update = set()
+
+            for job in rejected_jobs:
+                tasks_to_update.add(job.task.id)
+                cvat_db_service.update_job_status(db_session, job.id, JobStatuses.new)
+
+            for task_id in tasks_to_update:
+                cvat_db_service.update_task_status(
+                    db_session, task_id, TaskStatus.annotation
+                )
+
+            cvat_db_service.update_project_status(
+                db_session, project.id, ProjectStatuses.annotation
+            )
 
         case _:
             assert False, f"Unknown recording oracle event {webhook.event_type}"
@@ -143,7 +149,7 @@ def process_outgoing_recording_oracle_webhooks():
     logger = get_function_logger(module_logger)
 
     try:
-        logger.info("Starting cron job")
+        logger.debug("Starting cron job")
 
         with SessionLocal.begin() as session:
             webhooks = oracle_db_service.outbox.get_pending_webhooks(
@@ -153,11 +159,7 @@ def process_outgoing_recording_oracle_webhooks():
             )
             for webhook in webhooks:
                 try:
-                    webhook_url = get_recording_oracle_url(
-                        webhook.chain_id, webhook.escrow_address
-                    )
-
-                    body = prepare_recording_oracle_webhook_body(
+                    body = prepare_outgoing_webhook_body(
                         webhook.escrow_address,
                         webhook.chain_id,
                         webhook.event_type,
@@ -169,6 +171,9 @@ def process_outgoing_recording_oracle_webhooks():
 
                     headers = {"human-signature": signature}
                     # TODO: restore
+                    # webhook_url = get_recording_oracle_url(
+                    #     webhook.chain_id, webhook.escrow_address
+                    # )
                     # with httpx.Client() as client:
                     #     response = client.post(
                     #         webhook_url, headers=headers, data=serialized_data
@@ -178,7 +183,7 @@ def process_outgoing_recording_oracle_webhooks():
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")
                     oracle_db_service.outbox.handle_webhook_fail(session, webhook.id)
-
-        logger.info("Finishing cron job")
     except Exception as e:
         logger.exception(e)
+    finally:
+        logger.debug("Finishing cron job")
