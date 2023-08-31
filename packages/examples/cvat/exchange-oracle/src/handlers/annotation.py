@@ -4,6 +4,7 @@ from typing import List, Dict, Callable
 
 from attrs import define
 
+from src.core.annotation import ANNOTATION_METAFILE_NAME, AnnotationMeta
 from src.core.types import TaskType
 from src.models.cvat import Job
 
@@ -12,10 +13,6 @@ from src.models.cvat import Job
 class FileDescriptor:
     filename: str
     file: io.RawIOBase
-
-
-ANNOTATION_METAFILE_NAME = "annotators.json"
-RESULTING_ANNOTATIONS_FILE = "resulting_annotations.zip"
 
 
 def process_image_label_binary_raw_annotations(
@@ -56,22 +53,24 @@ def get_raw_annotations_handler(
             raise ValueError(f"{job_type=} is not supported")
 
 
-def prepare_annotation_metafile(jobs: List[Job]) -> FileDescriptor:
+def prepare_annotation_metafile(
+    jobs: List[Job], job_annotations: Dict[int, FileDescriptor]
+) -> FileDescriptor:
     """
     Prepares a task/project annotation descriptor file with annotator mapping.
     """
 
-    contents = dict(
-        annotators=[
+    meta = AnnotationMeta(
+        jobs=[
             dict(
                 job_id=job.cvat_id,
+                annotation_filename=job_annotations[job.cvat_id],
                 annotator_wallet_address=job.latest_assignment.user_wallet_address,
             )
             for job in jobs
         ]
     )
 
-    serialized_contents = json.dumps(contents, sort_keys=True).encode()
     return FileDescriptor(
-        ANNOTATION_METAFILE_NAME, file=io.BytesIO(serialized_contents)
+        ANNOTATION_METAFILE_NAME, file=io.BytesIO(meta.json().encode())
     )

@@ -15,7 +15,7 @@ from src.core.types import (
     Networks,
 )
 from src.db import Base
-from src.utils.helpers import utcnow
+from src.utils.time import utcnow
 
 
 class Project(Base):

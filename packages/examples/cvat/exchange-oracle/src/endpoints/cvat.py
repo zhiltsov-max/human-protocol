@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 @router.post("/cvat-webhook", description="Receives a webhook from CVAT")
-async def cvat_webhook(
+async def receive_cvat_webhook(
     cvat_webhook: CvatWebhook,
     request: Request,
     x_signature_256: str = Header(),

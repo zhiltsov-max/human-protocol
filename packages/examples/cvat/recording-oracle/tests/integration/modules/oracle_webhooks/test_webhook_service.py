@@ -1,21 +1,20 @@
 import unittest
 import uuid
 
-from pydantic import ValidationError
-from src.database import SessionLocal
-from src.constants import Networks
-from src.modules.webhook.constants import (
+from src.db import SessionLocal
+from src.core.types import Networks
+from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )
-from src.modules.webhook.model import Webhook
+from src.models import Webhook
 from sqlalchemy.exc import IntegrityError
 
-from src.modules.webhook.constants import (
+from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )
-from src.modules.webhook import service as webhook_service
+from src.services import webhooks as webhook_service
 
 
 class ServiceIntegrationTest(unittest.TestCase):

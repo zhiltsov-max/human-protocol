@@ -18,7 +18,7 @@ from src.core.types import (
 )
 from src.log import get_root_logger
 from src.models.webhook import Webhook
-from src.utils.helpers import (
+from src.utils.webhooks import (
     prepare_outgoing_webhook_body,
     prepare_signed_message,
 )

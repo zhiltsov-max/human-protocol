@@ -12,7 +12,8 @@ from src.core.manifest import TaskManifest
 from src.core.types import CvatLabelType, TaskStatus, TaskType
 from src.db import SessionLocal
 
-from src.utils.helpers import compose_bucket_url, parse_bucket_url, parse_manifest
+from src.utils.assignments import parse_manifest
+from src.utils.storage import compose_bucket_url, parse_bucket_url
 
 import src.services.cvat as db_service
 import src.services.cloud as cloud_service

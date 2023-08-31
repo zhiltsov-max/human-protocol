@@ -13,7 +13,7 @@ from src.log import get_root_logger
 from src.models.webhook import Webhook
 import src.services.cvat as cvat_db_service
 import src.services.webhook as oracle_db_service
-from src.utils.helpers import prepare_outgoing_webhook_body, prepare_signed_message
+from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 from src.utils.logging import get_function_logger
 
 

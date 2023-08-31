@@ -11,12 +11,13 @@ router = APIRouter()
 
 
 @router.post("/oracle-webhook", description="Receives a webhook from an oracle")
-async def oracle_webhook(
+async def receive_oracle_webhook(
     webhook: OracleWebhook,
     request: Request,
     human_signature: Union[str, None] = Header(default=None),
-):
+) -> OracleWebhookResponse:
     try:
+        # TODO: add allowed sender type checks
         sender_type = await validate_oracle_webhook_signature(
             request, human_signature, webhook
         )

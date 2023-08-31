@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from src.core.types import AssignmentStatus, ProjectStatuses, TaskStatus, JobStatuses
 from src.models.cvat import Assignment, DataUpload, Project, Task, Job, User
-from src.utils.helpers import utcnow
+from src.utils.time import utcnow
 
 
 # Project

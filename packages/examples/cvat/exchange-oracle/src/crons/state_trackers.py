@@ -1,14 +1,14 @@
-from typing import List
+from typing import Dict, List
 
 from src.core.oracle_events import (
     ExchangeOracleEvent_TaskCreationFailed,
     ExchangeOracleEvent_TaskFinished,
 )
 
-
 from src.db import SessionLocal
 from src.core.config import CronConfig, StorageConfig
 
+from src.core.annotation import RESULTING_ANNOTATIONS_FILE
 from src.core.types import (
     OracleWebhookTypes,
     ProjectStatuses,
@@ -16,7 +16,6 @@ from src.core.types import (
     JobStatuses,
 )
 from src.handlers.annotation import (
-    RESULTING_ANNOTATIONS_FILE,
     prepare_annotation_metafile,
     FileDescriptor,
 )
@@ -26,7 +25,7 @@ import src.services.webhook as oracle_db_service
 import src.services.cloud.client as cloud_client
 import src.cvat.api_calls as cvat_api
 from src.cvat.tasks import CVAT_EXPORT_FORMAT_MAPPING
-from src.utils.helpers import compose_output_annotation_filename
+from src.utils.assignments import compose_output_annotation_filename
 from src.utils.logging import get_function_logger
 
 
@@ -209,7 +208,7 @@ def retrieve_annotations() -> None:
                 )
 
                 annotation_format = CVAT_EXPORT_FORMAT_MAPPING[project.job_type]
-                annotation_files: List[FileDescriptor] = []
+                job_annotations: Dict[int, FileDescriptor] = {}
 
                 # Collect raw annotations from CVAT, validate and convert them
                 # into a recording oracle suitable format
@@ -217,18 +216,17 @@ def retrieve_annotations() -> None:
                     job_annotations_file = cvat_api.get_job_annotations(
                         job.cvat_id, format_name=annotation_format
                     )
-                    annotation_files.append(
-                        FileDescriptor(
-                            filename="project_{}-task_{}-job_{}.zip".format(
-                                project.cvat_id, job.cvat_task_id, job.cvat_id
-                            ),
-                            file=job_annotations_file,
-                        )
+                    job_annotations[job.cvat_id] = FileDescriptor(
+                        filename="project_{}-task_{}-job_{}.zip".format(
+                            project.cvat_id, job.cvat_task_id, job.cvat_id
+                        ),
+                        file=job_annotations_file,
                     )
 
                 project_annotations_file = cvat_api.get_project_annotations(
                     project.cvat_id, format_name=annotation_format
                 )
+                annotation_files: List[FileDescriptor] = []
                 annotation_files.append(
                     FileDescriptor(
                         filename=RESULTING_ANNOTATIONS_FILE,
@@ -236,8 +234,11 @@ def retrieve_annotations() -> None:
                     )
                 )
 
-                annotation_metafile = prepare_annotation_metafile(jobs=jobs)
+                annotation_metafile = prepare_annotation_metafile(
+                    jobs=jobs, job_annotations=job_annotations
+                )
                 annotation_files.append(annotation_metafile)
+                annotation_files.extend(job_annotations.values())
 
                 storage_client = cloud_client.S3Client(
                     StorageConfig.endpoint_url,

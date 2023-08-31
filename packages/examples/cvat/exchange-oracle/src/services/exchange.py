@@ -9,7 +9,8 @@ import src.cvat.api_calls as cvat_api
 import src.services.cvat as cvat_service
 
 from src.chain.escrow import get_escrow_manifest
-from src.utils.helpers import parse_manifest, utcnow, compose_assignment_url
+from src.utils.assignments import parse_manifest, compose_assignment_url
+from src.utils.time import utcnow
 from src.utils.requests import get_or_404
 
 

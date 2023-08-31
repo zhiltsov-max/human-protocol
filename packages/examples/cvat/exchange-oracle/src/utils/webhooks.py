@@ -1,0 +1,54 @@
+import json
+from typing import Dict, Optional, Tuple, cast
+
+from src.chain.web3 import sign_message
+from src.core.oracle_events import ExchangeOracleEvent_TaskFinished, parse_event
+from src.core.types import (
+    ExchangeOracleEventType,
+    Networks,
+    OracleWebhookTypes,
+)
+
+
+def prepare_outgoing_webhook_body(
+    escrow_address: str,
+    chain_id: Networks,
+    event_type: str,
+    event_data: dict,
+) -> Dict:
+    body = {"escrow_address": escrow_address, "chain_id": chain_id}
+
+    event = parse_event(OracleWebhookTypes.exchange_oracle, event_type, event_data)
+
+    match event_type:
+        case ExchangeOracleEventType.task_finished:
+            event = cast(ExchangeOracleEvent_TaskFinished, event)
+            assert event.dict() == {}
+
+        case _:
+            assert False, f"Unexpected event {event_type} for recoding oracle"
+
+    return body
+
+
+def prepare_signed_message(
+    escrow_address: str,
+    chain_id: Networks,
+    message: Optional[str] = None,
+    body: Optional[dict] = None,
+) -> Tuple[str, str]:
+    """
+    Sign the message with the service identity.
+    Optionally, can serialize the input structure.
+    """
+
+    assert (message is not None) ^ (
+        body is not None
+    ), "Either 'message' or 'body' expected"
+
+    if not message and body:
+        message = json.dumps(body)
+
+    signature = sign_message(chain_id, message)
+
+    return message, signature

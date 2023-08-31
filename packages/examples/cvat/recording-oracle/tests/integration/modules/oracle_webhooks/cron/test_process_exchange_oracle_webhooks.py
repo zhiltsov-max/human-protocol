@@ -4,14 +4,14 @@ from unittest.mock import patch
 
 from human_protocol_sdk.storage import StorageClient
 from sqlalchemy.sql import select
-from src.config import StorageConfig
-from src.constants import Networks
-from src.database import SessionLocal
-from src.modules.webhook.constants import OracleWebhookStatuses, OracleWebhookTypes
-from src.modules.webhook.jobs.process_exchange_oracle_webhooks import (
+from src.core.config import StorageConfig
+from src.core.types import Networks
+from src.db import SessionLocal
+from src.core.types import OracleWebhookStatuses, OracleWebhookTypes
+from src.crons.process_exchange_oracle_webhooks import (
     process_exchange_oracle_webhooks,
 )
-from src.modules.webhook.model import Webhook
+from src.models import Webhook
 from tests.utils.constants import DEFAULT_GAS_PAYER_PRIV
 from tests.utils.setup_escrow import create_escrow, fund_escrow
 from web3 import Web3

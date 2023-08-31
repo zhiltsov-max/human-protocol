@@ -101,12 +101,12 @@ class CvatConfig:
 
 
 class StorageConfig:
-    endpoint_url = os.environ.get("ENDPOINT_URL", "storage.googleapis.com")
-    region = os.environ.get("REGION", "")
-    access_key = os.environ.get("ACCESS_KEY", "")
-    secret_key = os.environ.get("SECRET_KEY", "")
-    results_bucket_name = os.environ.get("RESULTS_BUCKET_NAME", "")
-    secure = False if os.environ.get("USE_SSL", "true") == "false" else True
+    endpoint_url = os.environ.get("STORAGE_ENDPOINT_URL", "storage.googleapis.com")
+    region = os.environ.get("STORAGE_REGION", "")
+    access_key = os.environ.get("STORAGE_ACCESS_KEY", "")
+    secret_key = os.environ.get("STORAGE_SECRET_KEY", "")
+    results_bucket_name = os.environ.get("STORAGE_RESULTS_BUCKET_NAME", "")
+    secure = False if os.environ.get("STORAGE_USE_SSL", "true") == "false" else True
 
     @classmethod
     def bucket_url(cls):

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from src.modules.chain.web3 import (
+from src.chain.web3 import (
     get_web3,
     sign_message,
     recover_signer,
@@ -10,7 +10,7 @@ from src.modules.chain.web3 import (
 from tests.utils.constants import DEFAULT_GAS_PAYER_PRIV, DEFAULT_GAS_PAYER, SIGNATURE
 
 from human_protocol_sdk.constants import NETWORKS, ChainId
-from src.config import LocalhostConfig
+from src.core.config import LocalhostConfig
 
 
 from web3 import Web3, HTTPProvider
@@ -35,9 +35,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             rpc_api = "https://polygon-mainnet-rpc.com"
             private_key = DEFAULT_GAS_PAYER_PRIV
 
-        with patch(
-            "src.modules.chain.web3.Config.polygon_mainnet", PolygonMainnetConfig
-        ):
+        with patch("src.chain.web3.Config.polygon_mainnet", PolygonMainnetConfig):
             w3 = get_web3(ChainId.POLYGON.value)
         self.assertIsInstance(w3, Web3)
         self.assertEqual(w3.eth.default_account, DEFAULT_GAS_PAYER)
@@ -51,7 +49,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             rpc_api = "https://polygon-mumbai-rpc.com"
             private_key = DEFAULT_GAS_PAYER_PRIV
 
-        with patch("src.modules.chain.web3.Config.polygon_mumbai", PolygonMumbaiConfig):
+        with patch("src.chain.web3.Config.polygon_mumbai", PolygonMumbaiConfig):
             w3 = get_web3(ChainId.POLYGON_MUMBAI.value)
         self.assertIsInstance(w3, Web3)
         self.assertEqual(w3.eth.default_account, DEFAULT_GAS_PAYER)
@@ -72,9 +70,9 @@ class ServiceIntegrationTest(unittest.TestCase):
         )
 
     def test_sign_message_polygon(self):
-        with patch("src.modules.chain.web3.get_web3") as mock_function:
+        with patch("src.chain.web3.get_web3") as mock_function:
             with patch(
-                "src.modules.chain.web3.Config.polygon_mainnet.private_key",
+                "src.chain.web3.Config.polygon_mainnet.private_key",
                 DEFAULT_GAS_PAYER_PRIV,
             ):
                 mock_function.return_value = self.w3
@@ -82,9 +80,9 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.assertEqual(signed_message, SIGNATURE)
 
     def test_sign_message_mumbai(self):
-        with patch("src.modules.chain.web3.get_web3") as mock_function:
+        with patch("src.chain.web3.get_web3") as mock_function:
             with patch(
-                "src.modules.chain.web3.Config.polygon_mumbai.private_key",
+                "src.chain.web3.Config.polygon_mumbai.private_key",
                 DEFAULT_GAS_PAYER_PRIV,
             ):
                 mock_function.return_value = self.w3
@@ -100,13 +98,13 @@ class ServiceIntegrationTest(unittest.TestCase):
         )
 
     def test_recover_signer(self):
-        with patch("src.modules.chain.web3.get_web3") as mock_function:
+        with patch("src.chain.web3.get_web3") as mock_function:
             mock_function.return_value = self.w3
             signer = recover_signer(ChainId.POLYGON.value, "message", SIGNATURE)
         self.assertEqual(signer, DEFAULT_GAS_PAYER)
 
     def test_recover_signer_invalid_signature(self):
-        with patch("src.modules.chain.web3.get_web3") as mock_function:
+        with patch("src.chain.web3.get_web3") as mock_function:
             mock_function.return_value = self.w3
             signer = recover_signer(ChainId.POLYGON.value, "test", SIGNATURE)
         self.assertNotEqual(signer, DEFAULT_GAS_PAYER)

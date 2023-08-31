@@ -1,5 +1,5 @@
 from src.modules.webhook.model import Webhook
-from src.database import Base
+from src.db import Base
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -7,7 +7,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from src.config import Config
+from src.core.config import Config
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
