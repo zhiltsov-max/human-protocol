@@ -47,6 +47,9 @@ class LocalhostConfig:
         "LOCALHOST_MUMBAI_ADDR", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
     )
 
+    exchange_oracle_url = os.environ.get("LOCALHOST_EXCHANGE_ORACLE_URL")
+    reputation_oracle_url = os.environ.get("LOCALHOST_REPUTATION_ORACLE_URL")
+
 
 class CronConfig:
     process_exchange_oracle_webhooks_int = int(

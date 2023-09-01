@@ -1,7 +1,9 @@
 import io
 import logging
 from typing import Dict
+import httpx
 from sqlalchemy.orm import Session
+from src.chain.kvstore import get_exchange_oracle_url
 
 from src.core.oracle_events import (
     RecordingOracleEvent_TaskCompleted,
@@ -204,16 +206,14 @@ def process_outgoing_exchange_oracle_webhooks():
                     )
 
                     headers = {"human-signature": signature}
-                    # TODO: restore
-                    # service_address = get_exchange_oracle_address()
-                    # webhook_url = get_exchange_oracle_url(
-                    #     webhook.chain_id, service_address
-                    # )
-                    # with httpx.Client() as client:
-                    #     response = client.post(
-                    #         webhook_url, headers=headers, data=serialized_data
-                    #     )
-                    #     response.raise_for_status()
+                    webhook_url = get_exchange_oracle_url(
+                        webhook.chain_id, webhook.escrow_address
+                    )
+                    with httpx.Client() as client:
+                        response = client.post(
+                            webhook_url, headers=headers, data=serialized_data
+                        )
+                        response.raise_for_status()
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")

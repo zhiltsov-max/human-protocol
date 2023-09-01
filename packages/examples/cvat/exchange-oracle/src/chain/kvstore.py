@@ -2,9 +2,13 @@ from human_protocol_sdk.escrow import EscrowClient
 from human_protocol_sdk.kvstore import KVStoreClient
 
 from src.chain.web3 import get_web3
+from src.core.config import Config
 
 
 def get_recording_oracle_url(chain_id: int, escrow_address: str) -> str:
+    if url := Config.localhost.recording_oracle_url:
+        return url
+
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
     kvstore_client = KVStoreClient(web3)

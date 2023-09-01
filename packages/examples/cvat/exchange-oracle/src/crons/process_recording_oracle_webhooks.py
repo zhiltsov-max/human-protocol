@@ -2,7 +2,7 @@ import logging
 import httpx
 
 from sqlalchemy.orm import Session
-from src.core.oracle_events import RecordingOracleEvent_TaskRejected, parse_event
+from src.core.oracle_events import RecordingOracleEvent_TaskRejected
 
 from src.db import SessionLocal
 from src.core.config import CronConfig
@@ -170,15 +170,14 @@ def process_outgoing_recording_oracle_webhooks():
                     )
 
                     headers = {"human-signature": signature}
-                    # TODO: restore
-                    # webhook_url = get_recording_oracle_url(
-                    #     webhook.chain_id, webhook.escrow_address
-                    # )
-                    # with httpx.Client() as client:
-                    #     response = client.post(
-                    #         webhook_url, headers=headers, data=serialized_data
-                    #     )
-                    #     response.raise_for_status()
+                    webhook_url = get_recording_oracle_url(
+                        webhook.chain_id, webhook.escrow_address
+                    )
+                    with httpx.Client() as client:
+                        response = client.post(
+                            webhook_url, headers=headers, data=serialized_data
+                        )
+                        response.raise_for_status()
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")

@@ -3,7 +3,6 @@ import httpx
 from src.db import SessionLocal
 from src.core.config import CronConfig
 
-from src.chain.escrow import get_reputation_oracle_address
 from src.chain.kvstore import get_reputation_oracle_url
 
 from src.core.types import OracleWebhookTypes
@@ -48,16 +47,14 @@ def process_outgoing_reputation_oracle_webhooks():
                     )
 
                     headers = {"human-signature": signature}
-                    # TODO: restore
-                    # service_address = get_reputation_oracle_address()
-                    # webhook_url = get_reputation_oracle_url(
-                    #     webhook.chain_id, service_address
-                    # )
-                    # with httpx.Client() as client:
-                    #     response = client.post(
-                    #         webhook_url, headers=headers, data=serialized_data
-                    #     )
-                    #     response.raise_for_status()
+                    webhook_url = get_reputation_oracle_url(
+                        webhook.chain_id, webhook.escrow_address
+                    )
+                    with httpx.Client() as client:
+                        response = client.post(
+                            webhook_url, headers=headers, data=serialized_data
+                        )
+                        response.raise_for_status()
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")
