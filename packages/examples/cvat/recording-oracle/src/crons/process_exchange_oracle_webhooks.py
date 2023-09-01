@@ -14,19 +14,24 @@ from src.core.config import Config
 from src.db import SessionLocal
 from src.core.config import CronConfig, StorageConfig
 from src.log import get_root_logger
-from src.models import Webhook
+from src.models.webhooks import Webhook
+from src.utils.assignments import parse_manifest
+from src.utils.cloud_storage import parse_bucket_url
 from src.utils.logging import get_function_logger
 from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 
-from src.recording.process_intermediate_results import (
+from src.handlers.process_intermediate_results import (
+    ValidationSuccess,
     parse_annotation_metafile,
     process_intermediate_results,
+    serialize_validation_meta,
 )
 
 from src.core.types import ExchangeOracleEventType, OracleWebhookTypes
 import src.services.cloud.client as cloud_client
 from src.services.cloud import download_file
-from src.core.annotation import ANNOTATION_METAFILE_NAME, RESULTING_ANNOTATIONS_FILE
+import src.core.annotation_meta as annotation
+import src.core.validation_meta as validation
 from src.utils.storage import compose_bucket_filename
 
 import src.services.webhooks as oracle_db_service
@@ -77,8 +82,9 @@ def handle_exchange_oracle_event(
     match webhook.event_type:
         case ExchangeOracleEventType.task_finished:
             escrow.validate_escrow(webhook.chain_id, webhook.escrow_address)
-            job_type = escrow.get_escrow_job_type(
-                webhook.chain_id, webhook.escrow_address
+
+            manifest = parse_manifest(
+                escrow.get_escrow_manifest(webhook.chain_id, webhook.escrow_address)
             )
 
             excor_bucket_host = Config.exchange_oracle_storage_config.endpoint_url
@@ -87,37 +93,74 @@ def handle_exchange_oracle_event(
             )
 
             excor_annotation_meta_path = compose_bucket_filename(
-                webhook.escrow_address, webhook.chain_id, ANNOTATION_METAFILE_NAME
+                webhook.escrow_address,
+                webhook.chain_id,
+                annotation.ANNOTATION_METAFILE_NAME,
             )
-            annotation_metafile = io.BytesIO(
-                download_file(
-                    excor_bucket_host, excor_bucket_name, excor_annotation_meta_path
-                )
+            annotation_metafile_data = download_file(
+                excor_bucket_host, excor_bucket_name, excor_annotation_meta_path
             )
-            annotation_meta = parse_annotation_metafile(annotation_metafile)
+            annotation_meta = parse_annotation_metafile(
+                io.BytesIO(annotation_metafile_data)
+            )
 
-            job_annotations: Dict[int, io.RawIOBase] = {}
+            job_annotations: Dict[int, bytes] = {}
             for job_meta in annotation_meta.jobs:
                 job_filename = compose_bucket_filename(
                     webhook.escrow_address,
                     webhook.chain_id,
                     job_meta.annotation_filename,
                 )
-                job_annotations[job_meta.job_id] = io.BytesIO(
-                    download_file(excor_bucket_host, excor_bucket_name, job_filename)
+                job_annotations[job_meta.job_id] = download_file(
+                    excor_bucket_host, excor_bucket_name, job_filename
                 )
 
-            # TODO: add GT checks & validation
-            results = process_intermediate_results(
-                annotation_meta, job_annotations, job_type=job_type
+            parsed_gt_bucket_url = parse_bucket_url(manifest.validation.gt_url)
+            gt_bucket_host = parsed_gt_bucket_url.host_url
+            gt_bucket_name = parsed_gt_bucket_url.bucket_name
+            gt_filename = parsed_gt_bucket_url.path
+            gt_file_data = download_file(
+                # TODO: remove mock
+                gt_bucket_host.replace("minio", "localhost"),
+                gt_bucket_name,
+                gt_filename,
             )
 
-            if results.task_completed:
-                excor_merged_annotation_path = compose_bucket_filename(
-                    webhook.escrow_address, webhook.chain_id, RESULTING_ANNOTATIONS_FILE
+            excor_merged_annotation_path = compose_bucket_filename(
+                webhook.escrow_address,
+                webhook.chain_id,
+                annotation.RESULTING_ANNOTATIONS_FILE,
+            )
+            merged_annotations = download_file(
+                excor_bucket_host, excor_bucket_name, excor_merged_annotation_path
+            )
+
+            # TODO: add GT checks & validation
+            validation_results = process_intermediate_results(
+                db_session,
+                escrow_address=webhook.escrow_address,
+                chain_id=webhook.chain_id,
+                meta=annotation_meta,
+                job_annotations={k: io.BytesIO(v) for k, v in job_annotations.items()},
+                merged_annotations=io.BytesIO(merged_annotations),
+                gt_annotations=io.BytesIO(gt_file_data),
+                manifest=manifest,
+            )
+
+            if isinstance(validation_results, ValidationSuccess):
+                recor_merged_annotations_path = compose_bucket_filename(
+                    webhook.escrow_address,
+                    webhook.chain_id,
+                    validation.RESULTING_ANNOTATIONS_FILE,
                 )
-                merged_annotations = download_file(
-                    excor_bucket_host, excor_bucket_name, excor_merged_annotation_path
+
+                recor_validation_meta_path = compose_bucket_filename(
+                    webhook.escrow_address,
+                    webhook.chain_id,
+                    validation.VALIDATION_METAFILE_NAME,
+                )
+                validation_metafile = serialize_validation_meta(
+                    validation_results.validation_meta
                 )
 
                 storage_client = cloud_client.S3Client(
@@ -129,21 +172,19 @@ def handle_exchange_oracle_event(
                 # TODO: add encryption
                 storage_client.create_file(
                     Config.storage_config.results_bucket_name,
-                    RESULTING_ANNOTATIONS_FILE,
+                    recor_merged_annotations_path,
                     merged_annotations,
                 )
                 storage_client.create_file(
                     Config.storage_config.results_bucket_name,
-                    VALIDATION_METAFILE_NAME,
+                    recor_validation_meta_path,
                     validation_metafile,
                 )
-
-                # TODO: add annotator results
 
                 escrow.store_results(
                     webhook.chain_id,
                     webhook.escrow_address,
-                    f"{StorageConfig.bucket_url()}{RESULTING_ANNOTATIONS_FILE}",
+                    f"{StorageConfig.bucket_url()}{recor_merged_annotations_path}",
                     "samplehash",  # TODO: add hash
                 )
 
@@ -158,7 +199,7 @@ def handle_exchange_oracle_event(
                     db_session,
                     webhook.escrow_address,
                     webhook.chain_id,
-                    OracleWebhookTypes.exchange_oracle.value,
+                    OracleWebhookTypes.exchange_oracle,
                     event=RecordingOracleEvent_TaskCompleted(),
                 )
             else:
@@ -166,9 +207,9 @@ def handle_exchange_oracle_event(
                     db_session,
                     webhook.escrow_address,
                     webhook.chain_id,
-                    OracleWebhookTypes.exchange_oracle.value,
+                    OracleWebhookTypes.exchange_oracle,
                     event=RecordingOracleEvent_TaskRejected(
-                        rejected_job_ids=results.rejected_job_ids
+                        rejected_job_ids=validation_results.rejected_job_ids
                     ),
                 )
 

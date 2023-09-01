@@ -3,11 +3,15 @@
 import os
 from dotenv import load_dotenv
 
+from src.utils.logging import parse_log_level
+
 load_dotenv()
 
 
 def str_to_bool(val: str) -> bool:
-    return val is True or val == "True"
+    from distutils.util import strtobool
+
+    return val is True or strtobool(val)
 
 
 class Postgres:
@@ -104,12 +108,20 @@ class ExchangeOracleStorageConfig:
         )
 
 
+class FeaturesConfig:
+    enable_custom_cloud_host = str_to_bool(
+        os.environ.get("ENABLE_CUSTOM_CLOUD_HOST", "no")
+    )
+    "Allows using a custom host in manifest bucket urls"
+
+
 class Config:
     port = int(os.environ.get("PORT", 8000))
     environment = os.environ.get("ENVIRONMENT", "development")
     workers_amount = int(os.environ.get("WORKERS_AMOUNT", 1))
     webhook_max_retries = int(os.environ.get("WEBHOOK_MAX_RETRIES", 5))
     webhook_delay_if_failed = int(os.environ.get("WEBHOOK_DELAY_IF_FAILED", 5))
+    loglevel = parse_log_level(os.environ.get("LOGLEVEL", "info"))
 
     polygon_mainnet = PolygonMainnetConfig
     polygon_mumbai = PolygonMumbaiConfig
@@ -119,3 +131,5 @@ class Config:
     cron_config = CronConfig
     storage_config = StorageConfig
     exchange_oracle_storage_config = ExchangeOracleStorageConfig
+
+    features = FeaturesConfig

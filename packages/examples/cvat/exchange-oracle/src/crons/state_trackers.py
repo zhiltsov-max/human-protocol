@@ -8,7 +8,7 @@ from src.core.oracle_events import (
 from src.db import SessionLocal
 from src.core.config import CronConfig, StorageConfig
 
-from src.core.annotation import RESULTING_ANNOTATIONS_FILE
+from src.core.annotation_meta import RESULTING_ANNOTATIONS_FILE
 from src.core.types import (
     OracleWebhookTypes,
     ProjectStatuses,
@@ -200,9 +200,6 @@ def retrieve_annotations() -> None:
                     )
                     continue
 
-                # TODO: add handlers for other task types?
-                # raw_annotations_handler = get_raw_annotations_handler(project.job_type)
-
                 jobs = cvat_service.get_jobs_by_cvat_project_id(
                     session, project.cvat_id
                 )
@@ -216,9 +213,14 @@ def retrieve_annotations() -> None:
                     job_annotations_file = cvat_api.get_job_annotations(
                         job.cvat_id, format_name=annotation_format
                     )
+                    job_assignment = job.latest_assignment
                     job_annotations[job.cvat_id] = FileDescriptor(
-                        filename="project_{}-task_{}-job_{}.zip".format(
-                            project.cvat_id, job.cvat_task_id, job.cvat_id
+                        filename="project_{}-task_{}-job_{}-user_{}-assignment_{}.zip".format(
+                            project.cvat_id,
+                            job.cvat_task_id,
+                            job.cvat_id,
+                            job_assignment.user.cvat_id,
+                            job_assignment.id,
                         ),
                         file=job_annotations_file,
                     )
@@ -245,19 +247,30 @@ def retrieve_annotations() -> None:
                     access_key=StorageConfig.access_key,
                     secret_key=StorageConfig.secret_key,
                 )
+                existing_storage_files = set(
+                    f.key
+                    for f in storage_client.list_files(
+                        StorageConfig.results_bucket_name,
+                        path=compose_output_annotation_filename(
+                            project.escrow_address,
+                            project.chain_id,
+                            "",
+                        ),
+                    )
+                )
                 for file_descriptor in annotation_files:
-                    try:
-                        storage_client.create_file(
-                            StorageConfig.results_bucket_name,
-                            compose_output_annotation_filename(
-                                project.escrow_address,
-                                project.chain_id,
-                                file_descriptor.filename,
-                            ),
-                            file_descriptor.file.read(),
-                        )
-                    except Exception:
-                        raise
+                    if file_descriptor.filename in existing_storage_files:
+                        continue
+
+                    storage_client.create_file(
+                        StorageConfig.results_bucket_name,
+                        compose_output_annotation_filename(
+                            project.escrow_address,
+                            project.chain_id,
+                            file_descriptor.filename,
+                        ),
+                        file_descriptor.file.read(),
+                    )
 
                 oracle_db_service.outbox.create_webhook(
                     session,

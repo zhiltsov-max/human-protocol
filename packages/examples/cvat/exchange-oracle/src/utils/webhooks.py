@@ -1,10 +1,9 @@
 import json
-from typing import Dict, Optional, Tuple, cast
+from typing import Dict, Optional, Tuple
 
 from src.chain.web3 import sign_message
-from src.core.oracle_events import ExchangeOracleEvent_TaskFinished, parse_event
+from src.core.oracle_events import parse_event
 from src.core.types import (
-    ExchangeOracleEventType,
     Networks,
     OracleWebhookTypes,
 )
@@ -19,14 +18,8 @@ def prepare_outgoing_webhook_body(
     body = {"escrow_address": escrow_address, "chain_id": chain_id}
 
     event = parse_event(OracleWebhookTypes.exchange_oracle, event_type, event_data)
-
-    match event_type:
-        case ExchangeOracleEventType.task_finished:
-            event = cast(ExchangeOracleEvent_TaskFinished, event)
-            assert event.dict() == {}
-
-        case _:
-            assert False, f"Unexpected event {event_type} for recoding oracle"
+    body["event_type"] = event_type
+    body["event_data"] = event.dict()
 
     return body
 

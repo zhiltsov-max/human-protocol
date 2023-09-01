@@ -13,7 +13,7 @@ from src.core.types import (
     OracleWebhookTypes,
     OracleWebhookStatuses,
 )
-from src.models import Webhook
+from src.models.webhooks import Webhook
 
 from src.core.config import Config
 from src.utils.enums import BetterEnumMeta

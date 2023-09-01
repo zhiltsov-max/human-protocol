@@ -142,7 +142,10 @@ def create_task(escrow_address: str, chain_id: int) -> None:
     data_filenames = filter_image_files(data_filenames)
 
     gt_file_data = cloud_service.download_file(
-        gt_bucket_host.replace("minio", "localhost"), gt_bucket_name, gt_filename
+        # TODO: remove mock
+        gt_bucket_host.replace("minio", "localhost"),
+        gt_bucket_name,
+        gt_filename,
     )
     gt_filenames = get_gt_filenames(gt_file_data, data_filenames, manifest=manifest)
 

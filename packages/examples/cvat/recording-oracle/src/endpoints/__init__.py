@@ -26,7 +26,7 @@ def meta_route() -> MetaResponse:
 
     return MetaResponse.parse_obj(
         dict(
-            message="Exchange Oracle API",
+            message="Recording Oracle API",
             version="0.1.0",
             supported_networks=networks_info,
         )

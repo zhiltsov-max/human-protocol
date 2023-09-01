@@ -9,7 +9,7 @@ from src.core.types import OracleWebhookStatuses, OracleWebhookTypes
 from src.crons.process_reputation_oracle_webhooks import (
     process_reputation_oracle_webhooks,
 )
-from src.models import Webhook
+from src.models.webhooks import Webhook
 from tests.utils.constants import DEFAULT_GAS_PAYER_PRIV
 from tests.utils.setup_escrow import create_escrow
 from tests.utils.setup_kvstore import store_kvstore_value

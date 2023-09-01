@@ -4,23 +4,42 @@ from human_protocol_sdk.escrow import EscrowClient
 from human_protocol_sdk.storage import StorageClient
 
 from src.chain.web3 import get_web3
-from src.core.types import JobTypes
+from src.core.types import TaskType
 
 
-def get_escrow_job_type(chain_id: int, escrow_address: str):
-    web3 = get_web3(chain_id)
-    escrow_client = EscrowClient(web3)
+def get_escrow_manifest(chain_id: int, escrow_address: str) -> dict:
+    # web3 = get_web3(chain_id)
+    # escrow_client = EscrowClient(web3)
 
-    manifest_url = escrow_client.get_manifest_url(escrow_address)
+    # manifest_url = escrow_client.get_manifest_url(escrow_address)
 
-    manifest = json.loads(
-        (StorageClient.download_file_from_url(manifest_url)).decode("utf-8")
-    )
+    # return json.loads(
+    #     (StorageClient.download_file_from_url(manifest_url)).decode("utf-8")
+    # )
 
-    return manifest["requestType"]
+    # TODO: remove mock
+    return {
+        "data": {
+            "data_url": "http://datasets.minio:9010",
+        },
+        "annotation": {
+            "labels": [{"name": "cat"}],
+            "type": "IMAGE_BOXES",
+            "job_size": 3,
+        },
+        "validation": {
+            "val_size": 2,
+            "min_quality": 0.9,
+            "gt_url": "http://datasets.minio:9010/gt_annotations_coco/annotations/instances_default.json",
+        },
+        "job_bounty": "10.2",
+    }
 
 
 def validate_escrow(chain_id: int, escrow_address: str):
+    # TODO: remove mock
+    return
+
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
 
@@ -39,7 +58,7 @@ def validate_escrow(chain_id: int, escrow_address: str):
         (StorageClient.download_file_from_url(manifest_url)).decode("utf-8")
     )
     job_type = manifest["requestType"]
-    if job_type not in JobTypes.__members__.values():
+    if job_type not in TaskType.__members__.values():
         raise ValueError(f"Oracle doesn't support job type {job_type}")
 
 

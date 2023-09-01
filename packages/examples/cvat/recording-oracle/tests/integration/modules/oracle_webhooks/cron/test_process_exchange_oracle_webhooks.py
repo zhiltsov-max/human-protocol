@@ -11,7 +11,7 @@ from src.core.types import OracleWebhookStatuses, OracleWebhookTypes
 from src.crons.process_exchange_oracle_webhooks import (
     process_exchange_oracle_webhooks,
 )
-from src.models import Webhook
+from src.models.webhooks import Webhook
 from tests.utils.constants import DEFAULT_GAS_PAYER_PRIV
 from tests.utils.setup_escrow import create_escrow, fund_escrow
 from web3 import Web3
