@@ -13,7 +13,7 @@ from src.core.types import CvatLabelType, TaskStatus, TaskType
 from src.db import SessionLocal
 
 from src.utils.assignments import parse_manifest
-from src.utils.storage import compose_bucket_url, parse_bucket_url
+from src.utils.cloud_storage import compose_bucket_url, parse_bucket_url
 
 import src.services.cvat as db_service
 import src.services.cloud as cloud_service
