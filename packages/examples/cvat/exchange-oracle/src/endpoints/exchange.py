@@ -20,7 +20,11 @@ async def list_tasks(
     signature: str = Header(description="Calling service signature"),
 ) -> list[TaskResponse]:
     await validate_human_app_signature(signature)
-    return oracle_service.get_available_tasks(wallet_address=wallet_address)
+
+    if not wallet_address:
+        return oracle_service.get_available_tasks()
+    else:
+        return oracle_service.get_tasks_by_assignee(wallet_address=wallet_address)
 
 
 @router.put("/register", description="Binds a CVAT user a to HUMAN App user")

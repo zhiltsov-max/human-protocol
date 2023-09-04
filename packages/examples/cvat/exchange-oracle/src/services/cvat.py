@@ -75,14 +75,31 @@ def get_projects_by_status(
     return projects
 
 
-def get_available_projects(
+def get_available_projects(session: Session, limit: int = 10) -> List[Project]:
+    return (
+        session.query(Project)
+        .where(
+            (Project.status == ProjectStatuses.annotation.value)
+            & Project.jobs.any(
+                (Job.status == JobStatuses.new)
+                & ~Job.assignments.any(
+                    Assignment.status == AssignmentStatus.created.value
+                )
+            )
+        )
+        .distinct()
+        .limit(limit)
+        .all()
+    )
+
+
+def get_projects_by_assignee(
     session: Session, wallet_address: Optional[str] = None, limit: int = 10
 ) -> List[Project]:
-    def _maybe_assigned_to_the_user(
-        expr: ColumnExpressionArgument,
-    ) -> ColumnExpressionArgument:
-        if wallet_address:
-            return expr | Project.jobs.any(
+    return (
+        session.query(Project)
+        .where(
+            Project.jobs.any(
                 Job.assignments.any(
                     (Assignment.user_wallet_address == wallet_address)
                     & Assignment.status.in_(
@@ -91,20 +108,6 @@ def get_available_projects(
                             AssignmentStatus.completed,
                             AssignmentStatus.canceled,
                         ]
-                    )
-                )
-            )
-        return expr
-
-    return (
-        session.query(Project)
-        .where(
-            _maybe_assigned_to_the_user(
-                (Project.status == ProjectStatuses.annotation.value)
-                & Project.jobs.any(
-                    (Job.status == JobStatuses.new)
-                    & ~Job.assignments.any(
-                        Assignment.status == AssignmentStatus.created.value
                     )
                 )
             )

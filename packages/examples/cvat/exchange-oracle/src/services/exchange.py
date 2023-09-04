@@ -53,13 +53,25 @@ def serialize_task(
         )
 
 
-def get_available_tasks(
+def get_available_tasks() -> list[service_api.TaskResponse]:
+    results = []
+
+    with SessionLocal.begin() as session:
+        cvat_projects = cvat_service.get_available_projects(session)
+
+        for project in cvat_projects:
+            results.append(serialize_task(project.id))
+
+    return results
+
+
+def get_tasks_by_assignee(
     wallet_address: Optional[str] = None,
 ) -> list[service_api.TaskResponse]:
     results = []
 
     with SessionLocal.begin() as session:
-        cvat_projects = cvat_service.get_available_projects(
+        cvat_projects = cvat_service.get_projects_by_assignee(
             session, wallet_address=wallet_address
         )
         user_assignments = {

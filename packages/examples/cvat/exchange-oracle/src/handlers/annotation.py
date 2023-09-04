@@ -26,7 +26,7 @@ def prepare_annotation_metafile(
                 job_id=job.cvat_id,
                 annotation_filename=job_annotations[job.cvat_id],
                 annotator_wallet_address=job.latest_assignment.user_wallet_address,
-                assignment_id=job.latest_assignment.id
+                assignment_id=job.latest_assignment.id,
             )
             for job in jobs
         ]
