@@ -29,12 +29,7 @@ class Webhook(Base):
     event_type = Column(String, nullable=False)
     event_data = Column(JSON, nullable=True, server_default=None)
     direction = Column(String, nullable=False)
-
-    __table_args__ = (
-        UniqueConstraint(
-            "escrow_address", "type", "event_type", name="_escrow_address_type_uc"
-        ),
-    )
+    sender_timestamp = Column(Integer)
 
     def __repr__(self):
         return f"Webhook. id={self.id} type={self.type}.{self.event_type}"

@@ -19,6 +19,7 @@ from src.core.manifest import TaskManifest
 from src.core.types import TaskType, TaskType
 from src.core.validation_meta import JobMeta, ResultMeta, ValidationMeta
 import src.services.validation as db_service
+from src.validation.dataset_comparison import DatasetComparator
 
 
 @define
@@ -45,32 +46,6 @@ def extract_zip_archive(data: io.RawIOBase, dst_dir: Path, *, create_dir: bool =
 
     with zipfile.ZipFile(data) as f:
         f.extractall(dst_dir)
-
-
-def match_boxes(gt_boxes, ds_boxes) -> float:
-    # m = np.zeros()
-    # matches = linear_sum_assignment(m)
-    # ...
-
-    return 0.5
-
-
-def get_annotation_accuracy(gt_dataset: dm.Dataset, ds_dataset: dm.Dataset) -> float:
-    frame_similarities = []
-
-    for ds_sample in ds_dataset:
-        gt_sample = gt_dataset.get(ds_sample.id)
-
-        if not gt_sample:
-            continue
-
-        ds_boxes = [a for a in ds_sample.annotations if isinstance(a, dm.Bbox)]
-        gt_boxes = [a for a in gt_sample.annotations if isinstance(a, dm.Bbox)]
-
-        frame_similarity = match_boxes(gt_boxes=gt_boxes, ds_boxes=ds_boxes)
-        frame_similarities.append(frame_similarity)
-
-    return np.mean(frame_similarities)
 
 
 def process_intermediate_results(
@@ -100,6 +75,10 @@ def process_intermediate_results(
             os.fspath(gt_dataset_path), format=dataset_format
         )
 
+        comparator = DatasetComparator(
+            min_similarity_threshold=manifest.validation.min_quality
+        )
+
         for job_cvat_id, job_annotations_file in job_annotations.items():
             job_dataset_path = tempdir / str(job_cvat_id)
             extract_zip_archive(job_annotations_file, job_dataset_path)
@@ -108,7 +87,7 @@ def process_intermediate_results(
                 os.fspath(job_dataset_path), format=dataset_format
             )
 
-            job_mean_accuracy = get_annotation_accuracy(gt_dataset, job_dataset)
+            job_mean_accuracy = comparator.compare(gt_dataset, job_dataset)
             job_results[job_cvat_id] = job_mean_accuracy
 
             if job_mean_accuracy < manifest.validation.min_quality:
