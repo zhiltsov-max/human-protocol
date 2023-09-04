@@ -93,6 +93,9 @@ def handle_update_job_event(payload: dict) -> None:
 
 def handle_create_job_event(payload: dict) -> None:
     with SessionLocal.begin() as session:
+        if payload.job["type"] != "annotation":
+            return
+
         jobs = cvat_service.get_jobs_by_cvat_id(session, [payload.job["id"]])
 
         if not jobs:

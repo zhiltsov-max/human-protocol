@@ -20,6 +20,7 @@ from src.handlers.annotation import (
     FileDescriptor,
 )
 from src.log import get_root_logger
+import src.models.cvat as cvat_models
 import src.services.cvat as cvat_service
 import src.services.webhook as oracle_db_service
 import src.services.cloud.client as cloud_client
@@ -307,8 +308,8 @@ def track_task_creation() -> None:
                 limit=CronConfig.track_creating_tasks_chunk_size,
             )
 
-            completed = []
-            failed = []
+            completed: List[cvat_models.DataUpload] = []
+            failed: List[cvat_models.DataUpload] = []
             for upload in uploads:
                 status, reason = cvat_api.get_task_upload_status(upload.task_id)
                 if not status or status == cvat_api.UploadStatus.FAILED:
@@ -324,7 +325,37 @@ def track_task_creation() -> None:
                         event=ExchangeOracleEvent_TaskCreationFailed(reason=reason),
                     )
                 elif status == cvat_api.UploadStatus.FINISHED:
-                    completed.append(upload)
+                    try:
+                        cvat_jobs = cvat_api.fetch_task_jobs(upload.task_id)
+
+                        existing_jobs = cvat_service.get_jobs_by_cvat_task_id(
+                            session, upload.task_id
+                        )
+                        existing_job_ids = set(j.cvat_id for j in existing_jobs)
+
+                        for cvat_job in cvat_jobs:
+                            if cvat_job.id in existing_job_ids:
+                                continue
+
+                            cvat_service.create_job(
+                                session,
+                                cvat_job.id,
+                                upload.task_id,
+                                upload.task.cvat_project_id,
+                                status=JobStatuses(cvat_job.state),
+                            )
+
+                        completed.append(upload)
+                    except cvat_api.exceptions.ApiException as e:
+                        failed.append(upload)
+
+                        oracle_db_service.outbox.create_webhook(
+                            session,
+                            escrow_address=project.escrow_address,
+                            chain_id=project.chain_id,
+                            type=OracleWebhookTypes.job_launcher,
+                            event=ExchangeOracleEvent_TaskCreationFailed(reason=str(e)),
+                        )
 
             cvat_service.finish_uploads(session, failed + completed)
     except Exception as error:

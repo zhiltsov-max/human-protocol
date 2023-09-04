@@ -219,7 +219,7 @@ def fetch_task_jobs(task_id: int) -> List[models.JobRead]:
     with get_api_client() as api_client:
         try:
             data = get_paginated_collection(
-                api_client.jobs_api.list_endpoint, task_id=task_id
+                api_client.jobs_api.list_endpoint, task_id=task_id, type="annotation"
             )
             return data
         except exceptions.ApiException as e:
