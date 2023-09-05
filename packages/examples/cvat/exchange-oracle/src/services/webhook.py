@@ -27,6 +27,7 @@ class OracleWebhookDirectionTag(str, Enum, metaclass=BetterEnumMeta):
 @define
 class OracleWebhookQueue:
     direction: OracleWebhookDirectionTag
+    default_sender: Optional[OracleWebhookTypes] = None
 
     def create_webhook(
         self,
@@ -38,7 +39,7 @@ class OracleWebhookQueue:
         event_type: Optional[str] = None,
         event_data: Optional[dict] = None,
         event: Optional[OracleEvent] = None,
-    ) -> int:
+    ) -> str:
         """
         Creates a webhook in a database
         """
@@ -51,7 +52,8 @@ class OracleWebhookQueue:
             if self.direction == OracleWebhookDirectionTag.incoming:
                 sender = type
             else:
-                sender = OracleWebhookTypes.exchange_oracle
+                assert self.default_sender
+                sender = self.default_sender
             validate_event(sender, event_type, event_data)
         elif event:
             event_type = event.get_type()
@@ -59,9 +61,18 @@ class OracleWebhookQueue:
 
         if self.direction == OracleWebhookDirectionTag.incoming and not signature:
             raise ValueError("Webhook signature must be specified for incoming events")
+        elif self.direction == OracleWebhookDirectionTag.outgoing and signature:
+            raise ValueError(
+                "Webhook signature must not be specified for outgoing events"
+            )
 
-        existing_webhook_query = select(Webhook).where(Webhook.signature == signature)
-        existing_webhook = session.execute(existing_webhook_query).scalars().first()
+        if signature:
+            existing_webhook_query = select(Webhook).where(
+                Webhook.signature == signature
+            )
+            existing_webhook = session.execute(existing_webhook_query).scalars().first()
+        else:
+            existing_webhook = None
 
         if existing_webhook is None:
             webhook_id = str(uuid.uuid4())
@@ -82,7 +93,7 @@ class OracleWebhookQueue:
         return existing_webhook.id
 
     def get_pending_webhooks(
-        self, session: Session, sender_type: OracleWebhookTypes, limit: int
+        self, session: Session, sender_type: OracleWebhookTypes, limit: int = 10
     ) -> List[Webhook]:
         webhooks = (
             session.query(Webhook)
@@ -98,14 +109,14 @@ class OracleWebhookQueue:
         return webhooks
 
     def update_webhook_status(
-        self, session: Session, webhook_id: int, status: OracleWebhookStatuses
+        self, session: Session, webhook_id: str, status: OracleWebhookStatuses
     ) -> None:
         upd = (
             update(Webhook).where(Webhook.id == webhook_id).values(status=status.value)
         )
         session.execute(upd)
 
-    def handle_webhook_success(self, session: Session, webhook_id: int) -> None:
+    def handle_webhook_success(self, session: Session, webhook_id: str) -> None:
         upd = (
             update(Webhook)
             .where(Webhook.id == webhook_id)
@@ -115,7 +126,7 @@ class OracleWebhookQueue:
         )
         session.execute(upd)
 
-    def handle_webhook_fail(self, session: Session, webhook_id: int) -> None:
+    def handle_webhook_fail(self, session: Session, webhook_id: str) -> None:
         upd = (
             update(Webhook)
             .where(Webhook.id == webhook_id)
@@ -136,4 +147,7 @@ class OracleWebhookQueue:
 
 
 inbox = OracleWebhookQueue(direction=OracleWebhookDirectionTag.incoming)
-outbox = OracleWebhookQueue(direction=OracleWebhookDirectionTag.outgoing)
+outbox = OracleWebhookQueue(
+    direction=OracleWebhookDirectionTag.outgoing,
+    default_sender=OracleWebhookTypes.exchange_oracle,
+)
