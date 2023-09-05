@@ -136,7 +136,7 @@ def handle_job_launcher_event(
                     "Canceling the project"
                 )
                 cvat_db_service.update_project_status(
-                    db_session, ProjectStatuses.canceled
+                    db_session, project.id, ProjectStatuses.canceled
                 )
 
             except Exception as ex:
