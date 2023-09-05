@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 from attrs import define, field
 import numpy as np
 import datumaro as dm
-from .annotation_matching import match_annotations, bbox_iou
+from .annotation_matching import Bbox, match_annotations, bbox_iou
 
 
 @define
@@ -38,8 +38,16 @@ class DatasetComparator:
             if not gt_sample:
                 continue
 
-            ds_boxes = [a for a in ds_sample.annotations if isinstance(a, dm.Bbox)]
-            gt_boxes = [a for a in gt_sample.annotations if isinstance(a, dm.Bbox)]
+            ds_boxes = [
+                Bbox(a.x, a.y, a.w, a.h, a.label)
+                for a in ds_sample.annotations
+                if isinstance(a, dm.Bbox)
+            ]
+            gt_boxes = [
+                Bbox(a.x, a.y, a.w, a.h, a.label)
+                for a in gt_sample.annotations
+                if isinstance(a, dm.Bbox)
+            ]
 
             matching_result = match_annotations(
                 gt_boxes,

@@ -88,6 +88,11 @@ def handle_exchange_oracle_event(
 
     match webhook.event_type:
         case ExchangeOracleEventType.task_finished:
+            logger.debug(
+                f"Received a task finish event for escrow_address={webhook.escrow_address}. "
+                "Validating the results"
+            )
+
             escrow.validate_escrow(webhook.chain_id, webhook.escrow_address)
 
             manifest = parse_manifest(
@@ -152,9 +157,15 @@ def handle_exchange_oracle_event(
                 merged_annotations=io.BytesIO(merged_annotations),
                 gt_annotations=io.BytesIO(gt_file_data),
                 manifest=manifest,
+                logger=logger,
             )
 
             if isinstance(validation_results, ValidationSuccess):
+                logger.info(
+                    f"Validation for escrow_address={webhook.escrow_address} successful, "
+                    f"average annotation quality is {validation_results.average_quality:.2f}"
+                )
+
                 recor_merged_annotations_path = compose_bucket_filename(
                     webhook.escrow_address,
                     webhook.chain_id,
@@ -210,6 +221,11 @@ def handle_exchange_oracle_event(
                     event=RecordingOracleEvent_TaskCompleted(),
                 )
             else:
+                logger.info(
+                    f"Validation for escrow_address={webhook.escrow_address} failed, "
+                    f"rejected {len(validation_results.rejected_job_ids)} jobs"
+                )
+
                 oracle_db_service.outbox.create_webhook(
                     db_session,
                     webhook.escrow_address,

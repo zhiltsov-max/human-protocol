@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -26,6 +27,7 @@ from src.validation.dataset_comparison import DatasetComparator
 class ValidationSuccess:
     validation_meta: ValidationMeta
     resulting_annotations: bytes
+    average_quality: float
 
 
 @define
@@ -58,6 +60,7 @@ def process_intermediate_results(
     gt_annotations: io.RawIOBase,
     merged_annotations: io.RawIOBase,
     manifest: TaskManifest,
+    logger: logging.Logger,
 ) -> Union[ValidationSuccess, ValidationFailure]:
     # validate
     task_type = manifest.annotation.type
@@ -92,6 +95,13 @@ def process_intermediate_results(
 
             if job_mean_accuracy < manifest.validation.min_quality:
                 rejected_job_ids.append(job_cvat_id)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(
+            "Task validation results for escrow_address=%s: %s",
+            escrow_address,
+            ", ".join(f"{k}: {v:.2f}" for k, v in job_results.items()),
+        )
 
     task = db_service.get_task_by_escrow_address(session, escrow_address)
     if not task:
@@ -142,13 +152,14 @@ def process_intermediate_results(
             JobMeta(
                 job_id=job_id_to_meta_id[job.id],
                 final_result_id=validation_result_id_to_meta_id[
-                    validation_result_id_to_meta_id[job_final_result_ids[job.id]]
+                    job_final_result_ids[job.id]
                 ],
             )
             for job in task_jobs
         ],
         results=[
             ResultMeta(
+                id=validation_result_id_to_meta_id[r.id],
                 job_id=job_id_to_meta_id[r.job.id],
                 annotator_wallet_address=r.annotator_wallet_address,
                 annotation_quality=r.annotation_quality,
@@ -158,7 +169,9 @@ def process_intermediate_results(
     )
 
     return ValidationSuccess(
-        validation_meta=validation_meta, resulting_annotations=merged_annotations
+        validation_meta=validation_meta,
+        resulting_annotations=merged_annotations,
+        average_quality=np.mean(list(job_results.values())) if job_results else 0,
     )
 
 

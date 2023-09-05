@@ -29,8 +29,8 @@ def bbox_iou(a_bbox: Bbox, b_bbox: Bbox) -> float:
     IoU computation for simple cases with bounding boxes
     """
 
-    a_x, a_y, a_w, a_h = a_bbox
-    b_x, b_y, b_w, b_h = b_bbox
+    a_x, a_y, a_w, a_h = a_bbox[:4]
+    b_x, b_y, b_w, b_h = b_bbox[:4]
     int_right = min(a_x + a_w, b_x + b_w)
     int_left = max(a_x, b_x)
     int_top = max(a_y, b_y)
