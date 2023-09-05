@@ -19,7 +19,7 @@ from src.handlers.annotation import (
     prepare_annotation_metafile,
     FileDescriptor,
 )
-from src.log import get_root_logger
+from src.log import ROOT_LOGGER_NAME
 import src.models.cvat as cvat_models
 import src.services.cvat as cvat_service
 import src.services.webhook as oracle_db_service
@@ -30,8 +30,7 @@ from src.utils.assignments import compose_output_annotation_filename
 from src.utils.logging import get_function_logger
 
 
-LOG_MODULE = "cron.cvat"
-module_logger = get_root_logger().getChild(LOG_MODULE)
+module_logger = f"{ROOT_LOGGER_NAME}.cron.cvat"
 
 
 def track_completed_projects() -> None:
@@ -53,6 +52,8 @@ def track_completed_projects() -> None:
                 limit=CronConfig.track_completed_projects_chunk_size,
             )
 
+            completed_project_ids = []
+
             for project in projects:
                 tasks = cvat_service.get_tasks_by_cvat_project_id(
                     session, project.cvat_id
@@ -63,6 +64,15 @@ def track_completed_projects() -> None:
                     cvat_service.update_project_status(
                         session, project.id, ProjectStatuses.completed
                     )
+
+                    completed_project_ids.append(project.cvat_id)
+
+            if completed_project_ids:
+                logger.info(
+                    "Found new completed projects: {}".format(
+                        ", ".join(str(t) for t in completed_project_ids)
+                    )
+                )
     except Exception as error:
         logger.exception(error)
     finally:
@@ -86,6 +96,8 @@ def track_completed_tasks() -> None:
                 TaskStatus.annotation,
             )
 
+            completed_task_ids = []
+
             for task in tasks:
                 jobs = cvat_service.get_jobs_by_cvat_task_id(session, task.cvat_id)
                 if len(jobs) > 0 and all(
@@ -94,6 +106,15 @@ def track_completed_tasks() -> None:
                     cvat_service.update_task_status(
                         session, task.id, TaskStatus.completed
                     )
+
+                    completed_task_ids.append(task.cvat_id)
+
+            if completed_task_ids:
+                logger.info(
+                    "Found new completed tasks: {}".format(
+                        ", ".join(str(t) for t in completed_task_ids)
+                    )
+                )
     except Exception as error:
         logger.exception(error)
     finally:
@@ -201,6 +222,10 @@ def retrieve_annotations() -> None:
                     )
                     continue
 
+                logger.debug(
+                    f"Downloading results for the project (escrow_address={project.escrow_address})"
+                )
+
                 jobs = cvat_service.get_jobs_by_cvat_project_id(
                     session, project.cvat_id
                 )
@@ -284,6 +309,11 @@ def retrieve_annotations() -> None:
                 cvat_service.update_project_status(
                     session, project.id, ProjectStatuses.validation
                 )
+
+                logger.info(
+                    f"The project (escrow_address={project.escrow_address}) "
+                    "is finished, resulting annotations are processed successfully"
+                )
     except Exception as error:
         logger.exception(error)
     finally:
@@ -306,6 +336,12 @@ def track_task_creation() -> None:
             uploads = cvat_service.get_active_task_uploads(
                 session,
                 limit=CronConfig.track_creating_tasks_chunk_size,
+            )
+
+            logger.debug(
+                "Checking the data uploading status of CVAT tasks: {}".format(
+                    ", ".join(str(u.task_id) for u in uploads)
+                )
             )
 
             completed: List[cvat_models.DataUpload] = []
@@ -358,6 +394,20 @@ def track_task_creation() -> None:
                         )
 
             cvat_service.finish_uploads(session, failed + completed)
+
+            if completed or failed:
+                logger.info(
+                    "Updated creation status of CVAT tasks: {}".format(
+                        "; ".join(
+                            f"{k}: {v}"
+                            for k, v in {
+                                "success": ", ".join(str(u.task_id) for u in completed),
+                                "failed": ", ".join(str(u.task_id) for u in failed),
+                            }.items()
+                            if v
+                        )
+                    )
+                )
     except Exception as error:
         logger.exception(error)
     finally:

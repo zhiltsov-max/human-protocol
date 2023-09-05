@@ -13,7 +13,7 @@ from src.core.oracle_events import (
 from src.core.config import Config
 from src.db import SessionLocal
 from src.core.config import CronConfig, StorageConfig
-from src.log import get_root_logger
+from src.log import ROOT_LOGGER_NAME
 from src.models.webhooks import Webhook
 from src.utils.assignments import parse_manifest
 from src.utils.cloud_storage import parse_bucket_url
@@ -38,15 +38,14 @@ import src.services.webhooks as oracle_db_service
 import src.chain.escrow as escrow
 
 
-LOG_MODULE = "cron.webhook"
-module_logger = get_root_logger().getChild(LOG_MODULE)
+module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 
 
 def process_incoming_exchange_oracle_webhooks():
     """
     Process incoming oracle webhooks
     """
-    logger = get_function_logger(module_logger)
+    logger = get_function_logger(module_logger_name)
 
     try:
         logger.debug("Starting cron job")
@@ -60,11 +59,19 @@ def process_incoming_exchange_oracle_webhooks():
 
             for webhook in webhooks:
                 try:
+                    logger.debug(
+                        "Processing webhook "
+                        f"{webhook.type}.{webhook.event_type}~{webhook.signature} "
+                        f"in escrow_address={webhook.escrow_address} "
+                        f"(attempt {webhook.attempts + 1})"
+                    )
+
                     handle_exchange_oracle_event(
                         webhook, db_session=session, logger=logger
                     )
 
                     oracle_db_service.inbox.handle_webhook_success(session, webhook.id)
+                    logger.debug("Webhook handled successfully")
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} handling failed: {e}")
                     oracle_db_service.inbox.handle_webhook_fail(session, webhook.id)
@@ -223,7 +230,7 @@ def process_outgoing_exchange_oracle_webhooks():
       * Retrieves `webhook_url` from KVStore
       * Sends webhook to exchange oracle
     """
-    logger = get_function_logger(module_logger)
+    logger = get_function_logger(module_logger_name)
 
     try:
         logger.debug("Starting cron job")
@@ -236,6 +243,13 @@ def process_outgoing_exchange_oracle_webhooks():
             )
             for webhook in webhooks:
                 try:
+                    logger.debug(
+                        "Processing webhook "
+                        f"{webhook.type}.{webhook.event_type} "
+                        f"in escrow_address={webhook.escrow_address} "
+                        f"(attempt {webhook.attempts + 1})"
+                    )
+
                     body = prepare_outgoing_webhook_body(
                         webhook.escrow_address,
                         webhook.chain_id,
@@ -255,7 +269,9 @@ def process_outgoing_exchange_oracle_webhooks():
                             webhook_url, headers=headers, data=serialized_data
                         )
                         response.raise_for_status()
+
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
+                    logger.debug("Webhook handled successfully")
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")
                     oracle_db_service.outbox.handle_webhook_fail(session, webhook.id)

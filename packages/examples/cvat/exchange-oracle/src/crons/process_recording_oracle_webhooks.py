@@ -16,7 +16,7 @@ from src.core.types import (
     RecordingOracleEventType,
     TaskStatus,
 )
-from src.log import get_root_logger
+from src.log import ROOT_LOGGER_NAME
 from src.models.webhook import Webhook
 from src.utils.webhooks import (
     prepare_outgoing_webhook_body,
@@ -28,15 +28,14 @@ import src.services.webhook as oracle_db_service
 from src.utils.logging import get_function_logger
 
 
-LOG_MODULE = "cron.webhook"
-module_logger = get_root_logger().getChild(LOG_MODULE)
+module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 
 
 def process_incoming_recording_oracle_webhooks():
     """
     Process incoming oracle webhooks
     """
-    logger = get_function_logger(module_logger)
+    logger = get_function_logger(module_logger_name)
 
     try:
         logger.debug("Starting cron job")
@@ -146,7 +145,7 @@ def process_outgoing_recording_oracle_webhooks():
       * Retrieves `webhook_url` from KVStore
       * Sends webhook to recording oracle
     """
-    logger = get_function_logger(module_logger)
+    logger = get_function_logger(module_logger_name)
 
     try:
         logger.debug("Starting cron job")
@@ -159,6 +158,12 @@ def process_outgoing_recording_oracle_webhooks():
             )
             for webhook in webhooks:
                 try:
+                    logger.debug(
+                        "Processing webhook "
+                        f"{webhook.type}.{webhook.event_type} "
+                        f"(attempt {webhook.attempts + 1})"
+                    )
+
                     body = prepare_outgoing_webhook_body(
                         webhook.escrow_address,
                         webhook.chain_id,
@@ -178,7 +183,9 @@ def process_outgoing_recording_oracle_webhooks():
                             webhook_url, headers=headers, data=serialized_data
                         )
                         response.raise_for_status()
+
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
+                    logger.debug("Webhook handled successfully")
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")
                     oracle_db_service.outbox.handle_webhook_fail(session, webhook.id)

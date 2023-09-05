@@ -29,7 +29,11 @@ def setup_logging():
             "console": {"formatter": "default", "class": "logging.StreamHandler"},
         },
         "loggers": {
-            ROOT_LOGGER_NAME: {"handlers": ["console"], "level": log_level_name},
+            ROOT_LOGGER_NAME: {
+                "handlers": ["console"],
+                "level": log_level_name,
+                "propagate": False,
+            },
         },
     }
 

@@ -1,5 +1,5 @@
 import logging
-from typing import NewType, Optional
+from typing import NewType, Optional, Union
 
 from src.utils.stack import current_function_name
 
@@ -12,8 +12,12 @@ def parse_log_level(level: str) -> LogLevel:
 
 
 def get_function_logger(
-    parent_logger: Optional[logging.Logger] = None,
+    parent_logger: Optional[Union[str, logging.Logger]] = None,
 ) -> logging.Logger:
-    parent_logger = parent_logger or logging.getLogger()
+    if isinstance(parent_logger, str):
+        parent_logger = logging.getLogger(parent_logger)
+    else:
+        parent_logger = parent_logger or logging.getLogger()
+
     function_name = current_function_name(depth=2)
     return parent_logger.getChild(function_name)

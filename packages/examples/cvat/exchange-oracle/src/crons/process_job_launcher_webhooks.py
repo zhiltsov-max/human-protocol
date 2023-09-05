@@ -8,7 +8,7 @@ from src.core.types import OracleWebhookTypes, JobLauncherEventType, ProjectStat
 
 from src.chain.escrow import validate_escrow
 import src.cvat.tasks as cvat
-from src.log import get_root_logger
+from src.log import ROOT_LOGGER_NAME
 
 from src.models.webhook import Webhook
 import src.services.cvat as cvat_db_service
@@ -17,15 +17,14 @@ from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_mes
 from src.utils.logging import get_function_logger
 
 
-LOG_MODULE = "cron.webhook"
-module_logger = get_root_logger().getChild(LOG_MODULE)
+module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 
 
 def process_incoming_job_launcher_webhooks():
     """
     Process incoming job launcher webhooks
     """
-    logger = get_function_logger(module_logger)
+    logger = get_function_logger(module_logger_name)
 
     try:
         logger.debug("Starting cron job")
@@ -39,11 +38,20 @@ def process_incoming_job_launcher_webhooks():
 
             for webhook in webhooks:
                 try:
+                    logger.debug(
+                        "Processing webhook "
+                        f"{webhook.type}.{webhook.event_type}~{webhook.signature} "
+                        f"in escrow_address={webhook.escrow_address} "
+                        f"(attempt {webhook.attempts + 1})"
+                    )
+
                     handle_job_launcher_event(
                         webhook, db_session=session, logger=logger
                     )
 
                     oracle_db_service.inbox.handle_webhook_success(session, webhook.id)
+
+                    logger.debug("Webhook handled successfully")
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} handling failed: {e}")
                     oracle_db_service.inbox.handle_webhook_fail(session, webhook.id)
@@ -63,6 +71,16 @@ def handle_job_launcher_event(
             try:
                 # TODO: enable validation
                 # validate_escrow(webhook.chain_id, webhook.escrow_address)
+
+                if cvat_db_service.get_project_by_escrow_address(
+                    db_session, webhook.escrow_address
+                ):
+                    logger.error(
+                        f"Received an escrow creation event for "
+                        f"escrow_address {webhook.escrow_address}. "
+                        "A CVAT project for this escrow already exists, ignoring the event."
+                    )
+                    return
 
                 logger.info(
                     f"Creating a new CVAT project (escrow_address={webhook.escrow_address})"
@@ -134,7 +152,7 @@ def process_outgoing_job_launcher_webhooks():
       * Retrieves `webhook_url` from KVStore
       * Sends webhook to recording oracle
     """
-    logger = get_function_logger(module_logger)
+    logger = get_function_logger(module_logger_name)
 
     try:
         logger.debug("Starting cron job")
@@ -147,6 +165,13 @@ def process_outgoing_job_launcher_webhooks():
             )
             for webhook in webhooks:
                 try:
+                    logger.debug(
+                        "Processing webhook "
+                        f"{webhook.type}.{webhook.event_type} "
+                        f"in escrow_address={webhook.escrow_address} "
+                        f"(attempt {webhook.attempts + 1})"
+                    )
+
                     body = prepare_outgoing_webhook_body(
                         webhook.escrow_address,
                         webhook.chain_id,
@@ -157,17 +182,8 @@ def process_outgoing_job_launcher_webhooks():
                         webhook.escrow_address, webhook.chain_id, body=body
                     )
 
-                    headers = {"human-signature": signature}
-                    # TODO: restore
-                    # webhook_url = get_job_launcher_url(
-                    #     webhook.chain_id, webhook.escrow_address
-                    # )
-                    # with httpx.Client() as client:
-                    #     response = client.post(
-                    #         webhook_url, headers=headers, data=serialized_data
-                    #     )
-                    #     response.raise_for_status()
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
+                    logger.debug("Webhook handled successfully")
                 except Exception as e:
                     logger.exception(f"Webhook {webhook.id} sending failed: {e}")
                     oracle_db_service.outbox.handle_webhook_fail(session, webhook.id)
