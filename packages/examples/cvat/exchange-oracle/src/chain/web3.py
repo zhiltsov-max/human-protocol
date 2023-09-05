@@ -1,3 +1,4 @@
+import json
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
 from web3.providers.rpc import HTTPProvider
@@ -55,7 +56,7 @@ def sign_message(chain_id: Networks, message) -> str:
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
     signed_message = w3.eth.account.sign_message(
-        encode_defunct(text=str(message)), private_key
+        encode_defunct(text=json.dumps(message, separators=(",", ":"))), private_key
     )
 
     return signed_message.signature.hex()
@@ -66,7 +67,7 @@ def recover_signer(chain_id: Networks, message, signature: str) -> str:
     return signature
 
     w3 = get_web3(chain_id)
-    message_hash = encode_defunct(text=str(message))
+    message_hash = encode_defunct(text=json.dumps(message, separators=(",", ":")))
     signer = w3.eth.account.recover_message(message_hash, signature=signature)
 
     return signer
