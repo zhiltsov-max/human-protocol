@@ -19,3 +19,17 @@ def get_recording_oracle_url(chain_id: int, escrow_address: str) -> str:
     url = kvstore_client.get(recording_oracle_address, "webhook_url")
 
     return url
+
+
+def get_job_launcher_url(chain_id: int, escrow_address: str) -> str:
+    if url := Config.localhost.job_launcher_url:
+        return url
+
+    web3 = get_web3(chain_id)
+    escrow_client = EscrowClient(web3)
+    kvstore_client = KVStoreClient(web3)
+
+    job_launcher_address = escrow_client.get_job_launcher_address(escrow_address)
+    url = kvstore_client.get(job_launcher_address, "webhook_url")
+
+    return url
