@@ -1,12 +1,17 @@
 from http import HTTPStatus
-from fastapi import APIRouter, HTTPException, Header, Query
+from fastapi import APIRouter, HTTPException, Header, Path, Query
 from typing import Optional
 
 import sqlalchemy.exc
 from src.db import SessionLocal
 
 import src.cvat.api_calls as cvat_api
-from src.schemas.exchange import TaskResponse, UserRequest, UserResponse
+from src.schemas.exchange import (
+    AssignmentRequest,
+    TaskResponse,
+    UserRequest,
+    UserResponse,
+)
 import src.services.exchange as oracle_service
 from src.validators.signature import validate_human_app_signature
 import src.services.cvat as cvat_service
@@ -75,15 +80,15 @@ async def register(
     description="Start an assignment within the task for the annotator",
 )
 async def create_assignment(
-    wallet_address: str,
-    project_id: str = Query(alias="id"),
+    data: AssignmentRequest,
+    project_id: str = Path(alias="id"),
     signature: str = Header(description="Calling service signature"),
 ) -> TaskResponse:
     await validate_human_app_signature(signature)
 
     try:
         assignment_id = oracle_service.create_assignment(
-            project_id=project_id, wallet_address=wallet_address
+            project_id=project_id, wallet_address=data.wallet_address
         )
     except oracle_service.UserHasUnfinishedAssignmentError as e:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=str(e)) from e

@@ -32,3 +32,7 @@ class UserRequest(BaseModel):
 
 class UserResponse(UserRequest):
     cvat_id: int
+
+
+class AssignmentRequest(BaseModel):
+    wallet_address: str
