@@ -58,7 +58,7 @@ def handle_update_job_event(payload: dict) -> None:
                             f"Received job #{job.cvat_id} status update: {new_status.value}. "
                             "Assignment is expired, rejecting the update"
                         )
-                        cvat_service.expire_assignment(session, matching_assignment)
+                        cvat_service.expire_assignment(session, matching_assignment.id)
 
                         if matching_assignment.id == latest_assignment.id:
                             cvat_api.update_job_assignee(job.cvat_id, assignee_id=None)
@@ -92,8 +92,17 @@ def handle_update_job_event(payload: dict) -> None:
 
 
 def handle_create_job_event(payload: dict) -> None:
+    logger = get_function_logger(get_root_logger().getChild("handler"))
+
     with SessionLocal.begin() as session:
         if payload.job["type"] != "annotation":
+            return
+
+        task_id = payload.job["task_id"]
+        if not cvat_service.get_tasks_by_cvat_id(session, [task_id]):
+            logger.warning(
+                f"Received a job creation webhook for an unknown task id {task_id}, ignoring "
+            )
             return
 
         jobs = cvat_service.get_jobs_by_cvat_id(session, [payload.job["id"]])

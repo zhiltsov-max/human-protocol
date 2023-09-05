@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 1168a40ae04b
+Revision ID: ca93dce1a618
 Revises: 
-Create Date: 2023-09-01 18:25:26.337644
+Create Date: 2023-09-05 15:02:51.779529
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "1168a40ae04b"
+revision = "ca93dce1a618"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -60,9 +60,6 @@ def upgrade() -> None:
         sa.Column("event_data", sa.JSON(), nullable=True),
         sa.Column("direction", sa.String(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "escrow_address", "type", "event_type", name="_escrow_address_type_uc"
-        ),
     )
     op.create_index(op.f("ix_webhooks_id"), "webhooks", ["id"], unique=False)
     op.create_index(

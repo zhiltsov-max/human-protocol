@@ -3,18 +3,19 @@ from fastapi import Request
 
 from src.chain.kvstore import get_role_by_address
 from src.chain.web3 import recover_signer
+from src.core.types import OracleWebhookTypes
 
 
 async def validate_oracle_webhook_signature(
     request: Request, human_signature: str, webhook: dict
-):
+) -> OracleWebhookTypes:
     data: bytes = await request.body()
     message: dict = literal_eval(data.decode("utf-8"))
 
     # TODO: remove mock
     if not human_signature.startswith("excor"):
         raise Exception("Invalid signature")
-    return
+    return OracleWebhookTypes.exchange_oracle
 
     signer = recover_signer(webhook.chain_id, message, human_signature)
 

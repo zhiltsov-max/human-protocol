@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 from typing import Dict, Optional, Tuple
 
@@ -10,10 +11,7 @@ from src.core.types import (
 
 
 def prepare_outgoing_webhook_body(
-    escrow_address: str,
-    chain_id: Networks,
-    event_type: str,
-    event_data: dict,
+    escrow_address: str, chain_id: Networks, event_type: str, event_data: dict
 ) -> Dict:
     body = {"escrow_address": escrow_address, "chain_id": chain_id}
 
@@ -27,6 +25,7 @@ def prepare_outgoing_webhook_body(
 def prepare_signed_message(
     escrow_address: str,
     chain_id: Networks,
+    timestamp: datetime,
     message: Optional[str] = None,
     body: Optional[dict] = None,
 ) -> Tuple[str, str]:
@@ -42,6 +41,6 @@ def prepare_signed_message(
     if not message and body:
         message = json.dumps(body)
 
-    signature = sign_message(chain_id, message)
+    signature = sign_message(chain_id, message, timestamp)
 
     return message, signature

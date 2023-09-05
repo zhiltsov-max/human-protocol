@@ -166,6 +166,10 @@ def get_task_by_id(session: Session, task_id: str) -> Optional[Task]:
     return task
 
 
+def get_tasks_by_cvat_id(session: Session, task_ids: List[int]) -> List[Task]:
+    return session.query(Task).where(Task.id.in_(task_ids)).all()
+
+
 def get_tasks_by_status(session: Session, status: TaskStatus) -> List[Task]:
     tasks = (
         session.query(Task)

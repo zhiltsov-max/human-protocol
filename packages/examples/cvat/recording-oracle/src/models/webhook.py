@@ -1,5 +1,5 @@
 # pylint: disable=too-few-public-methods
-from sqlalchemy import JSON, Column, String, DateTime, Enum, Integer, UniqueConstraint
+from sqlalchemy import JSON, Column, String, DateTime, Enum, Integer
 from sqlalchemy.sql import func
 
 from src.core.types import (
@@ -13,7 +13,7 @@ from src.core.types import Networks
 class Webhook(Base):
     __tablename__ = "webhooks"
     id = Column(String, primary_key=True, index=True)
-    signature = Column(String, unique=True, index=True)
+    signature = Column(String, unique=True, index=True, nullable=True)
     escrow_address = Column(String(42), nullable=False)
     chain_id = Column(Integer, Enum(Networks), nullable=False)
     type = Column(String, Enum(OracleWebhookTypes), nullable=False)
@@ -29,7 +29,6 @@ class Webhook(Base):
     event_type = Column(String, nullable=False)
     event_data = Column(JSON, nullable=True, server_default=None)
     direction = Column(String, nullable=False)
-    sender_timestamp = Column(Integer)
 
     def __repr__(self):
         return f"Webhook. id={self.id} type={self.type}.{self.event_type}"

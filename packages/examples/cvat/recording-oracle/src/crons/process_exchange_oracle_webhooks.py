@@ -14,7 +14,7 @@ from src.core.config import Config
 from src.db import SessionLocal
 from src.core.config import CronConfig, StorageConfig
 from src.log import ROOT_LOGGER_NAME
-from src.models.webhooks import Webhook
+from src.models.webhook import Webhook
 from src.utils.assignments import parse_manifest
 from src.utils.cloud_storage import parse_bucket_url
 from src.utils.logging import get_function_logger
@@ -34,7 +34,7 @@ import src.core.annotation_meta as annotation
 import src.core.validation_meta as validation
 from src.utils.storage import compose_bucket_filename
 
-import src.services.webhooks as oracle_db_service
+import src.services.webhook as oracle_db_service
 import src.chain.escrow as escrow
 
 
@@ -199,18 +199,19 @@ def handle_exchange_oracle_event(
                     validation_metafile,
                 )
 
-                escrow.store_results(
-                    webhook.chain_id,
-                    webhook.escrow_address,
-                    f"{StorageConfig.bucket_url()}{recor_merged_annotations_path}",
-                    "samplehash",  # TODO: add hash
-                )
+                # TODO:
+                # escrow.store_results(
+                #     webhook.chain_id,
+                #     webhook.escrow_address,
+                #     f"{StorageConfig.bucket_url()}{recor_merged_annotations_path}",
+                #     "samplehash",  # TODO: add hash
+                # )
 
                 oracle_db_service.outbox.create_webhook(
                     db_session,
                     webhook.escrow_address,
                     webhook.chain_id,
-                    OracleWebhookTypes.reputation_oracle.value,
+                    OracleWebhookTypes.reputation_oracle,
                     event=RecordingOracleEvent_TaskCompleted(),
                 )
                 oracle_db_service.outbox.create_webhook(
@@ -272,9 +273,16 @@ def process_outgoing_exchange_oracle_webhooks():
                         webhook.event_type,
                         webhook.event_data,
                     )
-                    serialized_data, signature = prepare_signed_message(
-                        webhook.escrow_address, webhook.chain_id, body=body
-                    )
+
+                    # TODO: remove mock
+                    import json
+
+                    serialized_data = json.dumps(body).encode()
+                    signature = f"recor-{webhook.created_at}"
+                    # serialized_data, signature = prepare_signed_message(
+                    #     webhook.escrow_address, webhook.chain_id,
+                    #     body=body, timestamp=webhook.timestamp
+                    # ))
 
                     headers = {"human-signature": signature}
                     webhook_url = get_exchange_oracle_url(

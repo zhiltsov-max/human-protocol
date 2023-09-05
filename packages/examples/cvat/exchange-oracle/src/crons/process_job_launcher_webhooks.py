@@ -1,4 +1,6 @@
 import logging
+
+import httpx
 from src.core.oracle_events import ExchangeOracleEvent_TaskCreationFailed
 
 from src.db import SessionLocal
@@ -7,6 +9,7 @@ from src.core.config import CronConfig
 from src.core.types import OracleWebhookTypes, JobLauncherEventType, ProjectStatuses
 
 from src.chain.escrow import validate_escrow
+from src.chain.kvstore import get_job_launcher_url
 import src.cvat.tasks as cvat
 from src.log import ROOT_LOGGER_NAME
 
@@ -178,9 +181,26 @@ def process_outgoing_job_launcher_webhooks():
                         webhook.event_type,
                         webhook.event_data,
                     )
-                    serialized_data, signature = prepare_signed_message(
-                        webhook.escrow_address, webhook.chain_id, body=body
+
+                    # TODO: remove mock
+                    import json
+
+                    serialized_data = json.dumps(body).encode()
+                    signature = f"excor-{webhook.created_at}"
+                    # serialized_data, signature = prepare_signed_message(
+                    #     webhook.escrow_address, webhook.chain_id,
+                    #     body=body, timestamp=webhook.timestamp
+                    # )
+
+                    headers = {"human-signature": signature}
+                    webhook_url = get_job_launcher_url(
+                        webhook.chain_id, webhook.escrow_address
                     )
+                    with httpx.Client() as client:
+                        response = client.post(
+                            webhook_url, headers=headers, data=serialized_data
+                        )
+                        response.raise_for_status()
 
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)
                     logger.debug("Webhook handled successfully")

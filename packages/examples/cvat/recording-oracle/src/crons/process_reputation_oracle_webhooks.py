@@ -9,7 +9,7 @@ from src.core.types import OracleWebhookTypes
 from src.log import ROOT_LOGGER_NAME
 from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 
-import src.services.webhooks as oracle_db_service
+import src.services.webhook as oracle_db_service
 from src.utils.logging import get_function_logger
 
 
@@ -48,9 +48,16 @@ def process_outgoing_reputation_oracle_webhooks():
                         webhook.event_type,
                         webhook.event_data,
                     )
-                    serialized_data, signature = prepare_signed_message(
-                        webhook.escrow_address, webhook.chain_id, body=body
-                    )
+
+                    # TODO: remove mock
+                    import json
+
+                    serialized_data = json.dumps(body).encode()
+                    signature = f"recor-{webhook.created_at}"
+                    # serialized_data, signature = prepare_signed_message(
+                    #     webhook.escrow_address, webhook.chain_id,
+                    #     body=body, timestamp=webhook.timestamp
+                    # ))
 
                     headers = {"human-signature": signature}
                     webhook_url = get_reputation_oracle_url(
