@@ -518,9 +518,9 @@ export class JobService {
               ConfigNames.CVAT_EXCHANGE_ORACLE_WEBHOOK_URL,
             )!,
             {
-              escrowAddress: jobEntity.escrowAddress,
-              chainId: jobEntity.chainId,
-              eventType: EventType.ESCROW_CREATED,
+              escrow_address: jobEntity.escrowAddress,
+              chain_id: jobEntity.chainId,
+              event_type: EventType.ESCROW_CREATED,
             },
           );
         }
@@ -582,9 +582,9 @@ export class JobService {
             ConfigNames.FORTUNE_EXCHANGE_ORACLE_WEBHOOK_URL,
           )!,
           {
-            escrowAddress,
-            chainId: jobEntity.chainId,
-            eventType: EventType.ESCROW_CANCELED,
+            escrow_address: escrowAddress,
+            chain_id: jobEntity.chainId,
+            event_type: EventType.ESCROW_CANCELED,
           },
         );
       } else {
@@ -593,9 +593,9 @@ export class JobService {
             ConfigNames.CVAT_EXCHANGE_ORACLE_WEBHOOK_URL,
           )!,
           {
-            escrowAddress,
-            chainId: jobEntity.chainId,
-            eventType: EventType.ESCROW_CANCELED,
+            escrow_address: escrowAddress,
+            chain_id: jobEntity.chainId,
+            event_type: EventType.ESCROW_CANCELED,
           },
         );
       }

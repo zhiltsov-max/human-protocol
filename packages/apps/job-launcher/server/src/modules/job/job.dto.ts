@@ -109,9 +109,9 @@ export class SaveManifestDto {
 }
 
 export class SendWebhookDto {
-  public escrowAddress: string;
-  public chainId: number;
-  public eventType: EventType;
+  public escrow_address: string;
+  public chain_id: number;
+  public event_type: EventType;
 }
 
 export class FortuneManifestDto {
