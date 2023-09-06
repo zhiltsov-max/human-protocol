@@ -13,6 +13,7 @@ describe('EscrowFactory', function () {
 
   let token: HMToken, escrowFactory: EscrowFactory, staking: Staking;
 
+  const jobRequesterId = 'job-requester-id';
   const minimumStake = 2;
   const lockPeriod = 2;
 
@@ -22,10 +23,10 @@ describe('EscrowFactory', function () {
     const result = await (
       await escrowFactory
         .connect(operator)
-        .createEscrow(token.address, trustedHandlers)
+        .createEscrow(token.address, trustedHandlers, jobRequesterId)
     ).wait();
     const event = result.events?.find(({ topics }) =>
-      topics.includes(ethers.utils.id('Launched(address,address)'))
+      topics.includes(ethers.utils.id('LaunchedV2(address,address,string)'))
     )?.args;
 
     return event;
@@ -47,8 +48,15 @@ describe('EscrowFactory', function () {
     ];
 
     // Deploy HMToken Contract
-    const HMToken = await ethers.getContractFactory('HMToken');
-    token = await HMToken.deploy(1000000000, 'Human Token', 18, 'HMT');
+    const HMToken = await ethers.getContractFactory(
+      'contracts/HMToken.sol:HMToken'
+    );
+    token = (await HMToken.deploy(
+      1000000000,
+      'Human Token',
+      18,
+      'HMT'
+    )) as HMToken;
 
     // Send HMT tokens to the operator
     await token.connect(owner).transfer(await operator.getAddress(), 1000);
@@ -67,7 +75,9 @@ describe('EscrowFactory', function () {
     await token.connect(operator).approve(staking.address, 1000);
 
     // Deploy Escrow Factory Contract
-    const EscrowFactory = await ethers.getContractFactory('EscrowFactory');
+    const EscrowFactory = await ethers.getContractFactory(
+      'contracts/EscrowFactory.sol:EscrowFactory'
+    );
 
     escrowFactory = (await upgrades.deployProxy(
       EscrowFactory,
@@ -87,7 +97,11 @@ describe('EscrowFactory', function () {
     await expect(
       escrowFactory
         .connect(operator)
-        .createEscrow(token.address, [await reputationOracle.getAddress()])
+        .createEscrow(
+          token.address,
+          [await reputationOracle.getAddress()],
+          jobRequesterId
+        )
     ).to.be.revertedWith('Needs to stake HMT tokens to create an escrow.');
   });
 
@@ -104,10 +118,10 @@ describe('EscrowFactory', function () {
     await expect(
       escrowFactory
         .connect(operator)
-        .createEscrow(token.address, trustedHandlers)
+        .createEscrow(token.address, trustedHandlers, jobRequesterId)
     )
-      .to.emit(escrowFactory, 'Launched')
-      .withArgs(token.address, anyValue);
+      .to.emit(escrowFactory, 'LaunchedV2')
+      .withArgs(token.address, anyValue, jobRequesterId);
   });
 
   it('Should find the newly created escrow from deployed escrow', async () => {
@@ -143,7 +157,11 @@ describe('EscrowFactory', function () {
     await expect(
       escrowFactory
         .connect(operator)
-        .createEscrow(token.address, [await reputationOracle.getAddress()])
+        .createEscrow(
+          token.address,
+          [await reputationOracle.getAddress()],
+          jobRequesterId
+        )
     ).to.be.revertedWith('Needs to stake HMT tokens to create an escrow.');
   });
 

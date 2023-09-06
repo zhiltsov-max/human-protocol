@@ -22,6 +22,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+from src.models.webhook import Webhook
+from src.db import Base
 
 from src.db import Base
 

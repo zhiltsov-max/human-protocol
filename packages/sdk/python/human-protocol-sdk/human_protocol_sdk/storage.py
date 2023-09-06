@@ -7,7 +7,8 @@ from typing import List, Optional
 
 import requests
 from minio import Minio
-from validators import url as URL
+
+from .utils import validate_url
 
 logging.getLogger("minio").setLevel(logging.INFO)
 
@@ -135,7 +136,7 @@ class StorageClient:
         Raises:
             StorageClientError: If an error occurs while downloading the file.
         """
-        if not URL(url):
+        if not validate_url(url):
             raise StorageClientError(f"Invalid URL: {url}")
 
         try:
@@ -175,31 +176,36 @@ class StorageClient:
                 raise StorageClientError(str(e))
         return result_files
 
-    def upload_files(self, files: List[object], bucket: str) -> List[str]:
+    def upload_files(self, files: List[dict], bucket: str) -> List[dict]:
         """
         Uploads a list of files to the specified S3-compatible bucket.
 
         Args:
-            files (list[object]): A list of files to upload.
+            files (list[dict]): A list of files to upload.
             bucket (str): The name of the S3-compatible bucket to upload to.
 
         Returns:
-            list: A list of keys assigned to the uploaded files.
+            list: List of dict with key, url, hash fields
 
         Raises:
             StorageClientError: If an error occurs while uploading the files.
         """
         result_files = []
         for file in files:
-            try:
-                artifact = json.dumps(file, sort_keys=True)
-            except Exception as e:
-                LOG.error("Can't extract the json from the object")
-                raise e
+            if "file" in file and "key" in file and "hash" in file:
+                data = file["file"]
+                hash = file["hash"]
+                key = file["key"]
+            else:
+                try:
+                    artifact = json.dumps(file, sort_keys=True)
+                except Exception as e:
+                    LOG.error("Can't extract the json from the object")
+                    raise e
+                data = artifact.encode("utf-8")
+                hash = hashlib.sha1(data).hexdigest()
+                key = f"s3{hash}.json"
 
-            data = artifact.encode("utf-8")
-            hash = hashlib.sha1(data).hexdigest()
-            key = f"s3{hash}.json"
             url = (
                 f"{'https' if self.secure else 'http'}://{self.endpoint}/{bucket}/{key}"
             )
@@ -211,7 +217,7 @@ class StorageClient:
                     bucket_name=bucket, object_name=key
                 )
             except Exception as e:
-                if e.code == "NoSuchKey":
+                if hasattr(e, "code") and str(e.code) == "NoSuchKey":
                     # file does not exist in bucket, so upload it
                     pass
                 else:

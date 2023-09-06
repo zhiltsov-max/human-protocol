@@ -5,6 +5,9 @@ from test.human_protocol_sdk.utils import DEFAULT_GAS_PAYER_PRIV
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from human_protocol_sdk.constants import NETWORKS, ChainId, Status
+from human_protocol_sdk.gql.escrow import (
+    get_escrows_query,
+)
 from human_protocol_sdk.escrow import (
     EscrowClient,
     EscrowClientError,
@@ -58,12 +61,51 @@ class EscrowTestCase(unittest.TestCase):
             EscrowClient(w3)
         self.assertEqual(f"Invalid ChainId: {mock_chain_id}", str(cm.exception))
 
+    def test_init_with_invalid_web3(self):
+        mock_provider = MagicMock(spec=HTTPProvider)
+        w3 = Web3(mock_provider)
+
+        mock_chain_id = None
+        type(w3.eth).chain_id = PropertyMock(return_value=mock_chain_id)
+
+        with self.assertRaises(EscrowClientError) as cm:
+            EscrowClient(w3)
+        self.assertEqual(f"Invalid Web3 Instance", str(cm.exception))
+
     def test_escrow_config_valid_params(self):
         recording_oracle_address = "0x1234567890123456789012345678901234567890"
         reputation_oracle_address = "0x1234567890123456789012345678901234567890"
         recording_oracle_fee = 10
         reputation_oracle_fee = 10
-        manifest_url = "http://localhost"
+        manifest_url = "https://www.example.com/result"
+        hash = "test"
+
+        escrow_config = EscrowConfig(
+            recording_oracle_address,
+            reputation_oracle_address,
+            recording_oracle_fee,
+            reputation_oracle_fee,
+            manifest_url,
+            hash,
+        )
+
+        self.assertEqual(
+            escrow_config.recording_oracle_address, recording_oracle_address
+        )
+        self.assertEqual(
+            escrow_config.reputation_oracle_address, reputation_oracle_address
+        )
+        self.assertEqual(escrow_config.recording_oracle_fee, recording_oracle_fee)
+        self.assertEqual(escrow_config.reputation_oracle_fee, reputation_oracle_fee)
+        self.assertEqual(escrow_config.manifest_url, manifest_url)
+        self.assertEqual(escrow_config.hash, hash)
+
+    def test_escrow_config_valid_params_with_docker_network_url(self):
+        recording_oracle_address = "0x1234567890123456789012345678901234567890"
+        reputation_oracle_address = "0x1234567890123456789012345678901234567890"
+        recording_oracle_fee = 10
+        reputation_oracle_fee = 10
+        manifest_url = "http://test:6000"
         hash = "test"
 
         escrow_config = EscrowConfig(
@@ -91,7 +133,7 @@ class EscrowTestCase(unittest.TestCase):
         valid_address = "0x1234567890123456789012345678901234567890"
         recording_oracle_fee = 10
         reputation_oracle_fee = 10
-        manifest_url = "http://localhost"
+        manifest_url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -124,7 +166,7 @@ class EscrowTestCase(unittest.TestCase):
         recording_oracle_address = "0x1234567890123456789012345678901234567890"
         reputation_oracle_address = "0x1234567890123456789012345678901234567890"
         valid_oracle_fee = 10
-        manifest_url = "http://localhost"
+        manifest_url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -206,7 +248,7 @@ class EscrowTestCase(unittest.TestCase):
         reputation_oracle_address = "0x1234567890123456789012345678901234567890"
         recording_oracle_fee = 10
         reputation_oracle_fee = 10
-        manifest_url = "http://localhost"
+        manifest_url = "https://www.example.com/result"
         hash = ""
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -225,6 +267,7 @@ class EscrowTestCase(unittest.TestCase):
         self.escrow.factory_contract.functions.createEscrow = mock_function_create
         escrow_address = "0x1234567890123456789012345678901234567890"
         token_address = "0x1234567890123456789012345678901234567890"
+        job_requester_id = "job-requester"
         trusted_handlers = [self.w3.eth.default_account]
 
         with patch("human_protocol_sdk.escrow.handle_transaction") as mock_function:
@@ -232,11 +275,13 @@ class EscrowTestCase(unittest.TestCase):
                 mock_function_next.return_value = SimpleNamespace(
                     args=SimpleNamespace(escrow=escrow_address)
                 )
-                response = self.escrow.create_escrow(token_address, trusted_handlers)
+                response = self.escrow.create_escrow(
+                    token_address, trusted_handlers, job_requester_id
+                )
 
                 self.assertEqual(response, escrow_address)
                 mock_function_create.assert_called_once_with(
-                    token_address, trusted_handlers
+                    token_address, trusted_handlers, job_requester_id
                 )
                 mock_function_next.assert_called_once()
 
@@ -250,17 +295,19 @@ class EscrowTestCase(unittest.TestCase):
     def test_create_escrow_invalid_token(self):
         token_address = "invalid_address"
         trusted_handlers = [self.w3.eth.default_account]
+        job_requester_id = "job-requester"
 
         with self.assertRaises(EscrowClientError) as cm:
-            self.escrow.create_escrow(token_address, trusted_handlers)
+            self.escrow.create_escrow(token_address, trusted_handlers, job_requester_id)
         self.assertEqual(f"Invalid token address: {token_address}", str(cm.exception))
 
     def test_create_escrow_invalid_handler(self):
         token_address = "0x1234567890123456789012345678901234567890"
         trusted_handlers = ["invalid_address"]
+        job_requester_id = "job-requester"
 
         with self.assertRaises(EscrowClientError) as cm:
-            self.escrow.create_escrow(token_address, trusted_handlers)
+            self.escrow.create_escrow(token_address, trusted_handlers, job_requester_id)
         self.assertEqual(
             f"Invalid handler address: {trusted_handlers[0]}", str(cm.exception)
         )
@@ -275,8 +322,11 @@ class EscrowTestCase(unittest.TestCase):
 
         token_address = "0x1234567890123456789012345678901234567890"
         trusted_handlers = ["0x1234567890123456789012345678901234567890"]
+        job_requester_id = "job-requester"
         with self.assertRaises(EscrowClientError) as cm:
-            escrowClient.create_escrow(token_address, trusted_handlers)
+            escrowClient.create_escrow(
+                token_address, trusted_handlers, job_requester_id
+            )
         self.assertEqual("You must add an account to Web3 instance", str(cm.exception))
 
     def test_setup(self):
@@ -289,7 +339,7 @@ class EscrowTestCase(unittest.TestCase):
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
@@ -319,7 +369,7 @@ class EscrowTestCase(unittest.TestCase):
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
@@ -341,7 +391,7 @@ class EscrowTestCase(unittest.TestCase):
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
         with self.assertRaises(EscrowClientError) as cm:
@@ -361,7 +411,7 @@ class EscrowTestCase(unittest.TestCase):
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
@@ -385,7 +435,7 @@ class EscrowTestCase(unittest.TestCase):
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
@@ -403,7 +453,7 @@ class EscrowTestCase(unittest.TestCase):
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
@@ -422,12 +472,13 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         token_address = "0x1234567890123456789012345678901234567890"
         trusted_handlers = [self.w3.eth.default_account]
+        job_requester_id = "job-requester"
         escrow_config = EscrowConfig(
             "0x1234567890123456789012345678901234567890",
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
         with patch("human_protocol_sdk.escrow.handle_transaction") as mock_function:
@@ -436,12 +487,12 @@ class EscrowTestCase(unittest.TestCase):
                     args=SimpleNamespace(escrow=escrow_address)
                 )
                 response = self.escrow.create_and_setup_escrow(
-                    token_address, trusted_handlers, escrow_config
+                    token_address, trusted_handlers, job_requester_id, escrow_config
                 )
 
                 self.assertEqual(response, escrow_address)
                 mock_function_create.assert_called_once_with(
-                    token_address, trusted_handlers
+                    token_address, trusted_handlers, job_requester_id
                 )
                 mock_function_next.assert_called_once()
 
@@ -462,18 +513,19 @@ class EscrowTestCase(unittest.TestCase):
         self.escrow.setup = MagicMock()
         token_address = "invalid_address"
         trusted_handlers = [self.w3.eth.default_account]
+        job_requester_id = "job-requester"
         escrow_config = EscrowConfig(
             "0x1234567890123456789012345678901234567890",
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
         with self.assertRaises(EscrowClientError) as cm:
             self.escrow.create_and_setup_escrow(
-                token_address, trusted_handlers, escrow_config
+                token_address, trusted_handlers, job_requester_id, escrow_config
             )
         self.assertEqual(f"Invalid token address: {token_address}", str(cm.exception))
         self.escrow.setup.assert_not_called()
@@ -482,18 +534,19 @@ class EscrowTestCase(unittest.TestCase):
         self.escrow.setup = MagicMock()
         token_address = "0x1234567890123456789012345678901234567890"
         trusted_handlers = ["invalid_address"]
+        job_requester_id = "job-requester"
         escrow_config = EscrowConfig(
             "0x1234567890123456789012345678901234567890",
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
         with self.assertRaises(EscrowClientError) as cm:
             self.escrow.create_and_setup_escrow(
-                token_address, trusted_handlers, escrow_config
+                token_address, trusted_handlers, job_requester_id, escrow_config
             )
         self.assertEqual(
             f"Invalid handler address: {trusted_handlers[0]}", str(cm.exception)
@@ -511,18 +564,19 @@ class EscrowTestCase(unittest.TestCase):
         escrowClient.setup = MagicMock()
         token_address = "0x1234567890123456789012345678901234567890"
         trusted_handlers = ["0x1234567890123456789012345678901234567890"]
+        job_requester_id = "job-requester"
         escrow_config = EscrowConfig(
             "0x1234567890123456789012345678901234567890",
             "0x1234567890123456789012345678901234567890",
             10,
             10,
-            "http://localhost",
+            "https://www.example.com/result",
             "test",
         )
 
         with self.assertRaises(EscrowClientError) as cm:
             escrowClient.create_and_setup_escrow(
-                token_address, trusted_handlers, escrow_config
+                token_address, trusted_handlers, job_requester_id, escrow_config
             )
         self.assertEqual("You must add an account to Web3 instance", str(cm.exception))
         escrowClient.setup.assert_not_called()
@@ -575,7 +629,7 @@ class EscrowTestCase(unittest.TestCase):
         mock_contract.functions.storeResults = MagicMock()
         self.escrow._get_escrow_contract = MagicMock(return_value=mock_contract)
         escrow_address = "0x1234567890123456789012345678901234567890"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = "test"
 
         with patch("human_protocol_sdk.escrow.handle_transaction") as mock_function:
@@ -592,7 +646,7 @@ class EscrowTestCase(unittest.TestCase):
 
     def test_store_results_invalid_address(self):
         escrow_address = "invalid_address"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -610,7 +664,7 @@ class EscrowTestCase(unittest.TestCase):
 
     def test_store_results_invalid_hash(self):
         escrow_address = "0x1234567890123456789012345678901234567890"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = ""
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -626,7 +680,7 @@ class EscrowTestCase(unittest.TestCase):
         escrowClient = EscrowClient(w3)
 
         escrow_address = "0x1234567890123456789012345678901234567890"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -641,7 +695,7 @@ class EscrowTestCase(unittest.TestCase):
         )
         self.escrow._get_escrow_contract = MagicMock(return_value=mock_contract)
         escrow_address = "0x1234567890123456789012345678901234567890"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -659,7 +713,7 @@ class EscrowTestCase(unittest.TestCase):
         )
         self.escrow._get_escrow_contract = MagicMock(return_value=mock_contract)
         escrow_address = "0x1234567890123456789012345678901234567890"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -672,7 +726,7 @@ class EscrowTestCase(unittest.TestCase):
     def test_store_results_invalid_escrow(self):
         self.escrow.factory_contract.functions.hasEscrow = MagicMock(return_value=False)
         escrow_address = "0x1234567890123456789012345678901234567890"
-        url = "http://localhost"
+        url = "https://www.example.com/result"
         hash = "test"
 
         with self.assertRaises(EscrowClientError) as cm:
@@ -690,7 +744,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -719,7 +773,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -751,7 +805,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100, 200]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -770,7 +824,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = []
         amounts = []
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -788,7 +842,7 @@ class EscrowTestCase(unittest.TestCase):
     def test_bulk_payout_zero_amount(self):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -806,7 +860,7 @@ class EscrowTestCase(unittest.TestCase):
     def test_bulk_payout_negative_amount(self):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -825,7 +879,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
         self.escrow.get_balance = MagicMock(return_value=50)
@@ -870,7 +924,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = ""
         txId = 1
         self.escrow.get_balance = MagicMock(return_value=100)
@@ -897,7 +951,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
         escrowClient.get_balance = MagicMock(return_value=100)
@@ -919,7 +973,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -947,7 +1001,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -975,7 +1029,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -1003,7 +1057,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -1031,7 +1085,7 @@ class EscrowTestCase(unittest.TestCase):
         escrow_address = "0x1234567890123456789012345678901234567890"
         recipients = ["0x1234567890123456789012345678901234567890"]
         amounts = [100]
-        final_results_url = "http://localhost"
+        final_results_url = "https://www.example.com/result"
         final_results_hash = "test"
         txId = 1
 
@@ -1424,6 +1478,26 @@ class EscrowTestCase(unittest.TestCase):
             "Escrow address is not provided by the factory", str(cm.exception)
         )
 
+    def test_get_manifest_hash(self):
+        mock_contract = MagicMock()
+        mock_contract.functions.manifestHash = MagicMock()
+        mock_contract.functions.manifestHash.return_value.call.return_value = (
+            "mock_value"
+        )
+        self.escrow._get_escrow_contract = MagicMock(return_value=mock_contract)
+        escrow_address = "0x1234567890123456789012345678901234567890"
+
+        result = self.escrow.get_manifest_hash(escrow_address)
+
+        self.escrow._get_escrow_contract.assert_called_once_with(escrow_address)
+        mock_contract.functions.manifestHash.assert_called_once_with()
+        self.assertEqual(result, "mock_value")
+
+    def test_get_manifest_hash_invalid_address(self):
+        with self.assertRaises(EscrowClientError) as cm:
+            self.escrow.get_manifest_hash("invalid_address")
+        self.assertEqual(f"Invalid escrow address: invalid_address", str(cm.exception))
+
     def test_get_manifest_url(self):
         mock_contract = MagicMock()
         mock_contract.functions.manifestUrl = MagicMock()
@@ -1671,72 +1745,42 @@ class EscrowTestCase(unittest.TestCase):
             "Escrow address is not provided by the factory", str(cm.exception)
         )
 
-    def test_get_launched_escrows(self):
-        requester_address = "0x1234567890123456789012345678901234567890"
-        mock_function = MagicMock()
-        with patch("human_protocol_sdk.escrow.get_data_from_subgraph") as mock_function:
-            mock_function.return_value = {
-                "data": {
-                    "launchedEscrows": [
-                        {
-                            "id": "0x1234567890123456789012345678901234567891",
-                        },
-                        {
-                            "id": "0x1234567890123456789012345678901234567892",
-                        },
-                    ]
-                }
-            }
-            launched_escrows = self.escrow.get_launched_escrows(requester_address)
-
-            mock_function.assert_called_once_with(
-                "subgraph_url",
-                """
-            {
-                launchedEscrows(
-                    where:{from:"0x1234567890123456789012345678901234567890"}
-                ) {
-                    id
-                }
-            }
-            """,
-            )
-
-            self.assertEqual(len(launched_escrows), 2)
-            self.assertEqual(
-                launched_escrows[0], "0x1234567890123456789012345678901234567891"
-            )
-            self.assertEqual(
-                launched_escrows[1], "0x1234567890123456789012345678901234567892"
-            )
-
     def test_escrow_filter_valid_params(self):
-        escrow_address = "0x1234567890123456789012345678901234567891"
+        launcher = "0x1234567890123456789012345678901234567891"
+        reputation_oracle = "0x1234567890123456789012345678901234567891"
+        recording_oracle = "0x1234567890123456789012345678901234567891"
         date_from = datetime.fromtimestamp(1683811973)
         date_to = datetime.fromtimestamp(1683812007)
         escrow_filter = EscrowFilter(
-            address=escrow_address,
+            launcher=launcher,
+            reputation_oracle=reputation_oracle,
+            recording_oracle=recording_oracle,
             status=Status.Pending,
             date_from=date_from,
             date_to=date_to,
         )
 
-        self.assertEqual(escrow_filter.address, escrow_address)
+        self.assertEqual(escrow_filter.launcher, launcher)
+        self.assertEqual(escrow_filter.reputation_oracle, reputation_oracle)
+        self.assertEqual(escrow_filter.recording_oracle, recording_oracle)
         self.assertEqual(escrow_filter.status, Status.Pending)
         self.assertEqual(escrow_filter.date_from, date_from)
         self.assertEqual(escrow_filter.date_to, date_to)
 
-    def test_escrow_filter_invalid_address(self):
+    def test_escrow_filter_invalid_address_launcher(self):
         with self.assertRaises(EscrowClientError) as cm:
-            EscrowFilter(address="invalid_address")
+            EscrowFilter(launcher="invalid_address")
         self.assertEqual("Invalid address: invalid_address", str(cm.exception))
 
-    def test_escrow_filter_no_parameters(self):
+    def test_escrow_filter_invalid_address_reputation_oracle(self):
         with self.assertRaises(EscrowClientError) as cm:
-            EscrowFilter()
-        self.assertEqual(
-            "EscrowFilter class must have at least one parameter", str(cm.exception)
-        )
+            EscrowFilter(reputation_oracle="invalid_address")
+        self.assertEqual("Invalid address: invalid_address", str(cm.exception))
+
+    def test_escrow_filter_invalid_address_recording_oracle(self):
+        with self.assertRaises(EscrowClientError) as cm:
+            EscrowFilter(recording_oracle="invalid_address")
+        self.assertEqual("Invalid address: invalid_address", str(cm.exception))
 
     def test_escrow_filter_invalid_dates(self):
         with self.assertRaises(EscrowClientError) as cm:
@@ -1749,44 +1793,85 @@ class EscrowTestCase(unittest.TestCase):
             str(cm.exception),
         )
 
-    def test_get_filtered_escrows(self):
+    def test_get_escrows(self):
         filter = EscrowFilter(
-            address="0x1234567890123456789012345678901234567891",
+            launcher="0x1234567890123456789012345678901234567891",
             status=Status.Pending,
             date_from=datetime.fromtimestamp(1683811973),
             date_to=datetime.fromtimestamp(1683812007),
         )
         mock_function = MagicMock()
         with patch("human_protocol_sdk.escrow.get_data_from_subgraph") as mock_function:
+            mock_escrow_1 = (
+                {
+                    "id": "0x1234567890123456789012345678901234567891",
+                    "address": "0x1234567890123456789012345678901234567891",
+                    "amountPaid": "1000000000000000000",
+                    "balance": "1000000000000000000",
+                    "count": "1",
+                    "factoryAddress": "0x1234567890123456789012345678901234567890",
+                    "finalResultsUrl": "https://example.com",
+                    "intermediateResultsUrl": "https://example.com",
+                    "launcher": "0x1234567890123456789012345678901234567891",
+                    "manifestHash": "0x1234567890123456789012345678901234567891",
+                    "manifestUrl": "https://example.com",
+                    "recordingOracle": "0x1234567890123456789012345678901234567891",
+                    "recordingOracleFee": "1000000000000000000",
+                    "reputationOracle": "0x1234567890123456789012345678901234567891",
+                    "reputationOracleFee": "1000000000000000000",
+                    "status": "Pending",
+                    "token": "0x1234567890123456789012345678901234567891",
+                    "totalFundedAmount": "1000000000000000000",
+                },
+            )
+            mock_escrow_2 = (
+                {
+                    "id": "0x1234567890123456789012345678901234567892",
+                    "address": "0x1234567890123456789012345678901234567892",
+                    "amountPaid": "1000000000000000000",
+                    "balance": "1000000000000000000",
+                    "count": "1",
+                    "factoryAddress": "0x1234567890123456789012345678901234567890",
+                    "finalResultsUrl": "https://example.com",
+                    "intermediateResultsUrl": "https://example.com",
+                    "launcher": "0x1234567890123456789012345678901234567892",
+                    "manifestHash": "0x1234567890123456789012345678901234567892",
+                    "manifestUrl": "https://example.com",
+                    "recordingOracle": "0x1234567890123456789012345678901234567892",
+                    "recordingOracleFee": "1000000000000000000",
+                    "reputationOracle": "0x1234567890123456789012345678901234567892",
+                    "reputationOracleFee": "1000000000000000000",
+                    "status": "Pending",
+                    "token": "0x1234567890123456789012345678901234567892",
+                    "totalFundedAmount": "1000000000000000000",
+                },
+            )
             mock_function.return_value = {
                 "data": {
-                    "launchedEscrows": [
-                        {
-                            "id": "0x1234567890123456789012345678901234567891",
-                        },
-                        {
-                            "id": "0x1234567890123456789012345678901234567892",
-                        },
+                    "escrows": [
+                        mock_escrow_1,
+                        mock_escrow_2,
                     ]
                 }
             }
-            filtered = self.escrow.get_escrows_filtered(filter)
+            filtered = self.escrow.get_escrows(filter)
 
             mock_function.assert_called_once_with(
                 "subgraph_url",
-                """
-            {
-                launchedEscrows(where:{from:"0x1234567890123456789012345678901234567891",status:"Pending",timestamp_gte:"1683811973",timestamp_lte:"1683812007",}
-                ) {
-                    id
-                }
-            }
-            """,
+                query=get_escrows_query(filter),
+                params={
+                    "launcher": "0x1234567890123456789012345678901234567891",
+                    "reputationOracle": None,
+                    "recordingOracle": None,
+                    "status": "Pending",
+                    "from": 1683811973,
+                    "to": 1683812007,
+                },
             )
 
             self.assertEqual(len(filtered), 2)
-            self.assertEqual(filtered[0], "0x1234567890123456789012345678901234567891")
-            self.assertEqual(filtered[1], "0x1234567890123456789012345678901234567892")
+            self.assertEqual(filtered[0], mock_escrow_1)
+            self.assertEqual(filtered[1], mock_escrow_2)
 
     def test_get_recording_oracle_address(self):
         mock_contract = MagicMock()

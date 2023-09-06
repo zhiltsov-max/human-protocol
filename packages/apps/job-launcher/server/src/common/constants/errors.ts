@@ -12,6 +12,8 @@ export enum ErrorJob {
   ResultValidationFailed = 'Result validation failed',
   InvalidRequestType = 'Invalid job type',
   JobParamsValidationFailed = 'Job parameters validation failed',
+  InvalidEventType = 'Invalid event type',
+  NotLaunched = 'Not launched' 
 }
 
 /**
@@ -21,6 +23,8 @@ export enum ErrorEscrow {
   NotFound = 'Escrow not found',
   NotCreated = 'Escrow has not been created',
   NotLaunched = 'Escrow has not been launched',
+  InvalidStatusCancellation = 'Escrow has an invalid status for cancellation',
+  InvalidBalanceCancellation = 'Escrow has an invalid balance for cancellation'
 }
 
 /**
@@ -91,4 +95,27 @@ export enum ErrorBucket {
 export enum ErrorWeb3 {
   InvalidTestnetChainId = 'Invalid chain id provided for the testnet environment',
   InvalidMainnetChainId = 'Invalid chain id provided for the mainnet environment',
+}
+
+/**
+ * Represents error messages related to send grid.
+ */
+export enum ErrorSendGrid {
+  EmailNotSent = 'Email was not sent',
+  InvalidApiKey = 'Invalid SendGrid API key',
+}
+
+/**
+ * Represents error messages related to signature.
+ */
+export enum ErrorSignature {
+  SignatureNotVerified = 'Signature not verified',
+  InvalidSignature = 'Invalid signature',
+}
+
+/**
+ * Represents error messages related to postgres.
+ */
+export enum ErrorPostgres {
+  NumericFieldOverflow = 'Numeric field overflow',
 }

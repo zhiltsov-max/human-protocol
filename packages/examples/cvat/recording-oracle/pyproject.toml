@@ -25,6 +25,7 @@ datumaro = {git = "https://github.com/cvat-ai/datumaro.git", rev = "ff83c00c2c1b
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
 pre-commit = "^3.3.3"
+hypothesis = "^6.82.6"
 
 [build-system]
 requires = ["poetry-core"]

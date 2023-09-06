@@ -1,41 +1,87 @@
-import { BigInt } from '@graphprotocol/graph-ts';
-import { Launched } from '../../generated/EscrowFactory/EscrowFactory';
-import { EscrowStatistics, LaunchedEscrow } from '../../generated/schema';
-import { Escrow } from '../../generated/templates';
-import { constructStatsEntity, STATISTICS_ENTITY_ID } from './Escrow';
+import {
+  Launched,
+  LaunchedV2,
+} from '../../generated/EscrowFactory/EscrowFactory';
+import { Escrow } from '../../generated/schema';
+import { Escrow as EscrowTemplate } from '../../generated/templates';
+import { createOrLoadEscrowStatistics } from './Escrow';
 import { createOrLoadLeader } from './Staking';
-import { updateEscrowAmountDayData } from './utils/dayUpdates';
+import { getEventDayData } from './utils/dayUpdates';
+import { ONE_BI, ZERO_BI } from './utils/number';
 
 export function handleLaunched(event: Launched): void {
-  // Entities only exist after they have been saved to the store;
-  const entity = new LaunchedEscrow(event.params.escrow.toHex());
+  // Create Escrow entity
+  const entity = new Escrow(event.params.escrow.toHex());
 
-  // Entity fields can be set based on event parameters
+  entity.createdAt = event.block.timestamp;
+  entity.address = event.params.escrow;
   entity.token = event.params.token;
-  entity.from = event.transaction.from;
-  entity.timestamp = event.block.timestamp;
-  entity.amountAllocated = BigInt.fromI32(0);
-  entity.amountPayout = BigInt.fromI32(0);
+  entity.factoryAddress = event.address;
+  entity.launcher = event.transaction.from;
+
+  entity.balance = ZERO_BI;
+  entity.amountPaid = ZERO_BI;
+  entity.totalFundedAmount = ZERO_BI;
+
   entity.status = 'Launched';
 
-  let statsEntity = EscrowStatistics.load(STATISTICS_ENTITY_ID);
-  if (!statsEntity) {
-    statsEntity = constructStatsEntity();
-  }
-  statsEntity.totalEscrowCount = statsEntity.totalEscrowCount.plus(
-    BigInt.fromI32(1)
-  );
+  // Update escrow statistics
+  const statsEntity = createOrLoadEscrowStatistics();
+  statsEntity.totalEscrowCount = statsEntity.totalEscrowCount.plus(ONE_BI);
   statsEntity.save();
+
   entity.count = statsEntity.totalEscrowCount;
-
-  // Entities can be written to the store with `.save()`
   entity.save();
-  Escrow.create(event.params.escrow);
 
-  updateEscrowAmountDayData(event);
+  // Create escrow template
+  EscrowTemplate.create(event.params.escrow);
 
+  // Update escrow amount day data
+  const eventDayData = getEventDayData(event);
+  eventDayData.dailyEscrowCount = eventDayData.dailyEscrowCount.plus(ONE_BI);
+  eventDayData.save();
+
+  // Increase amount of jobs launched by leader
   const leader = createOrLoadLeader(event.transaction.from);
+  leader.amountJobsLaunched = leader.amountJobsLaunched.plus(ONE_BI);
+  leader.save();
+}
 
-  leader.amountJobsLaunched = leader.amountJobsLaunched.plus(BigInt.fromI32(1));
+export function handleLaunchedV2(event: LaunchedV2): void {
+  // Create Escrow entity
+  const entity = new Escrow(event.params.escrow.toHex());
+
+  entity.createdAt = event.block.timestamp;
+  entity.address = event.params.escrow;
+  entity.token = event.params.token;
+  entity.jobRequesterId = event.params.jobRequesterId;
+  entity.factoryAddress = event.address;
+  entity.launcher = event.transaction.from;
+
+  entity.balance = ZERO_BI;
+  entity.amountPaid = ZERO_BI;
+  entity.totalFundedAmount = ZERO_BI;
+
+  entity.status = 'Launched';
+
+  // Update escrow statistics
+  const statsEntity = createOrLoadEscrowStatistics();
+  statsEntity.totalEscrowCount = statsEntity.totalEscrowCount.plus(ONE_BI);
+  statsEntity.save();
+
+  entity.count = statsEntity.totalEscrowCount;
+  entity.save();
+
+  // Create escrow template
+  EscrowTemplate.create(event.params.escrow);
+
+  // Update escrow amount day data
+  const eventDayData = getEventDayData(event);
+  eventDayData.dailyEscrowCount = eventDayData.dailyEscrowCount.plus(ONE_BI);
+  eventDayData.save();
+
+  // Increase amount of jobs launched by leader
+  const leader = createOrLoadLeader(event.transaction.from);
+  leader.amountJobsLaunched = leader.amountJobsLaunched.plus(ONE_BI);
   leader.save();
 }

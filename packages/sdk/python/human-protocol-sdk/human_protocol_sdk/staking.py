@@ -11,6 +11,7 @@ from web3 import Web3
 from web3.middleware import geth_poa_middleware
 
 from human_protocol_sdk.constants import ChainId, NETWORKS
+from human_protocol_sdk.gql.reward import get_reward_added_events_query
 from human_protocol_sdk.utils import (
     get_erc20_interface,
     get_factory_interface,
@@ -26,8 +27,6 @@ LOG = logging.getLogger("human_protocol_sdk.staking")
 
 
 class StakingClientError(Exception):
-    """Raises when some error happens when interacting with staking."""
-
     """
     Raises when some error happens when interacting with staking.
     """
@@ -36,14 +35,8 @@ class StakingClientError(Exception):
 
 
 class StakingClient:
-    """A class used to manage staking, and allocation on the HUMAN network.
-
-    Args:
-        staking_addr (str): The address of staking contract
-
-    Attributes:
-
-
+    """
+    A class used to manage staking, and allocation on the HUMAN network.
     """
 
     def __init__(self, w3: Web3):
@@ -58,12 +51,16 @@ class StakingClient:
         if not self.w3.middleware_onion.get("geth_poa"):
             self.w3.middleware_onion.inject(geth_poa_middleware, "geth_poa", layer=0)
 
+        chain_id = None
         # Load network configuration based on chain_id
         try:
             chain_id = self.w3.eth.chain_id
             self.network = NETWORKS[ChainId(chain_id)]
         except:
-            raise StakingClientError(f"Invalid ChainId: {chain_id}")
+            if chain_id is not None:
+                raise StakingClientError(f"Invalid ChainId: {chain_id}")
+            else:
+                raise StakingClientError(f"Invalid Web3 Instance")
 
         if not self.network:
             raise StakingClientError("Empty network configuration")
@@ -392,19 +389,14 @@ class StakingClient:
 
         reward_added_events_data = get_data_from_subgraph(
             self.network["subgraph_url"],
-            """
-rewardAddedEvents(where:{{slasher:"{0}"}}) {{
-    escrow
-    amount
-}}""".format(
-                slasher
-            ),
+            query=get_reward_added_events_query,
+            params={"slasherAddress": slasher},
         )
         reward_added_events = reward_added_events_data["data"]["rewardAddedEvents"]
 
         return [
             {
-                "escrow_address": reward_added_events[i]["escrow"],
+                "escrow_address": reward_added_events[i]["escrowAddress"],
                 "amount": reward_added_events[i]["amount"],
             }
             for i in range(len(reward_added_events))
