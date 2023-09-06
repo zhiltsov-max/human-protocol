@@ -7,6 +7,7 @@ from src.db import SessionLocal
 
 from src.core.config import CronConfig
 from src.core.types import OracleWebhookTypes, JobLauncherEventType, ProjectStatuses
+from human_protocol_sdk.constants import Status as EscrowStatus
 
 from src.chain.escrow import validate_escrow
 from src.chain.kvstore import get_job_launcher_url
@@ -72,8 +73,7 @@ def handle_job_launcher_event(
     match webhook.event_type:
         case JobLauncherEventType.escrow_created:
             try:
-                # TODO: enable validation
-                # validate_escrow(webhook.chain_id, webhook.escrow_address)
+                validate_escrow(webhook.chain_id, webhook.escrow_address)
 
                 if cvat_db_service.get_project_by_escrow_address(
                     db_session, webhook.escrow_address
@@ -109,8 +109,11 @@ def handle_job_launcher_event(
 
         case JobLauncherEventType.escrow_canceled:
             try:
-                # TODO: enable validation
-                # validate_escrow(webhook.chain_id, webhook.escrow_address)
+                validate_escrow(
+                    webhook.chain_id,
+                    webhook.escrow_address,
+                    accepted_states=[EscrowStatus.Pending, EscrowStatus.Cancelled],
+                )
 
                 project = cvat_db_service.get_project_by_escrow_address(
                     db_session, webhook.escrow_address
@@ -182,15 +185,12 @@ def process_outgoing_job_launcher_webhooks():
                         webhook.event_data,
                     )
 
-                    # TODO: remove mock
-                    import json
-
-                    serialized_data = json.dumps(body).encode()
-                    signature = f"excor-{webhook.created_at}"
-                    # serialized_data, signature = prepare_signed_message(
-                    #     webhook.escrow_address, webhook.chain_id,
-                    #     body=body, timestamp=webhook.timestamp
-                    # )
+                    serialized_data, signature = prepare_signed_message(
+                        webhook.escrow_address,
+                        webhook.chain_id,
+                        body=body,
+                        timestamp=webhook.created_at,
+                    )
 
                     headers = {"human-signature": signature}
                     webhook_url = get_job_launcher_url(

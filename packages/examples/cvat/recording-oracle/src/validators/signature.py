@@ -12,11 +12,6 @@ async def validate_oracle_webhook_signature(
     data: bytes = await request.body()
     message: dict = literal_eval(data.decode("utf-8"))
 
-    # TODO: remove mock
-    if not human_signature.startswith("excor"):
-        raise Exception("Invalid signature")
-    return OracleWebhookTypes.exchange_oracle
-
     signer = recover_signer(webhook.chain_id, message, human_signature)
 
     role = get_role_by_address(webhook.chain_id, signer)

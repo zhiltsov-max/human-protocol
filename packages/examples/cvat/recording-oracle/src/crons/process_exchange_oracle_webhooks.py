@@ -132,8 +132,7 @@ def handle_exchange_oracle_event(
             gt_bucket_name = parsed_gt_bucket_url.bucket_name
             gt_filename = parsed_gt_bucket_url.path
             gt_file_data = download_file(
-                # TODO: remove mock
-                gt_bucket_host.replace("minio", "localhost"),
+                gt_bucket_host,
                 gt_bucket_name,
                 gt_filename,
             )
@@ -147,7 +146,6 @@ def handle_exchange_oracle_event(
                 excor_bucket_host, excor_bucket_name, excor_merged_annotation_path
             )
 
-            # TODO: add GT checks & validation
             validation_results = process_intermediate_results(
                 db_session,
                 escrow_address=webhook.escrow_address,
@@ -274,15 +272,12 @@ def process_outgoing_exchange_oracle_webhooks():
                         webhook.event_data,
                     )
 
-                    # TODO: remove mock
-                    import json
-
-                    serialized_data = json.dumps(body).encode()
-                    signature = f"recor-{webhook.created_at}"
-                    # serialized_data, signature = prepare_signed_message(
-                    #     webhook.escrow_address, webhook.chain_id,
-                    #     body=body, timestamp=webhook.timestamp
-                    # ))
+                    serialized_data, signature = prepare_signed_message(
+                        webhook.escrow_address,
+                        webhook.chain_id,
+                        body=body,
+                        timestamp=webhook.created_at,
+                    )
 
                     headers = {"human-signature": signature}
                     webhook_url = get_exchange_oracle_url(

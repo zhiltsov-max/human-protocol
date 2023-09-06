@@ -34,9 +34,7 @@ async def validate_oracle_webhook_signature(
         (
             s_type
             for s_type in possible_signers
-            # TODO: remove the mock
-            if signer.lower().startswith(possible_signers[s_type].lower())
-            # if signer.lower() == possible_signers[s_type].lower()
+            if signer.lower() == possible_signers[s_type].lower()
         ),
         None,
     )

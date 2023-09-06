@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
@@ -42,7 +43,7 @@ def get_web3(chain_id: Networks):
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
 
-def sign_message(chain_id: Networks, message) -> str:
+def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
     w3 = get_web3(chain_id)
     private_key = ""
     match chain_id:
@@ -55,6 +56,7 @@ def sign_message(chain_id: Networks, message) -> str:
         case _:
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
+    # TODO: add timestamp use
     signed_message = w3.eth.account.sign_message(
         encode_defunct(text=json.dumps(message, separators=(",", ":"))), private_key
     )
@@ -63,8 +65,7 @@ def sign_message(chain_id: Networks, message) -> str:
 
 
 def recover_signer(chain_id: Networks, message, signature: str) -> str:
-    # TODO: remove mock
-    return signature
+    # TODO: handle timestamp use
 
     w3 = get_web3(chain_id)
     message_hash = encode_defunct(text=json.dumps(message, separators=(",", ":")))

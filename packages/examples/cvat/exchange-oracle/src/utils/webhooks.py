@@ -41,6 +41,6 @@ def prepare_signed_message(
     if not message and body:
         message = json.dumps(body)
 
-    signature = sign_message(chain_id, message, timestamp)
+    signature = sign_message(chain_id, message, timestamp=timestamp)
 
     return message, signature

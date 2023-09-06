@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import re
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -35,11 +36,22 @@ def parse_bucket_url(data_url: str) -> ParsedBucketUrl:
     #         bucket_name=parsed_url.netloc.split(".")[0],
     #     )
     elif Config.features.enable_custom_cloud_host:
+        is_ipv4 = re.fullmatch(
+            r"(\d{1,3}\.){3}(\d{1,3})(?:\:\d{1,5})", parsed_url.netloc
+        )
+        if is_ipv4:
+            host = parsed_url.netloc
+            bucket_name, path = parsed_url.path.lstrip("/").split("/", maxsplit=1)
+        else:
+            host = parsed_url.netloc.partition(".")[2]
+            bucket_name = parsed_url.netloc.split(".")[0]
+            path = parsed_url.path.lstrip("/")
+
         return ParsedBucketUrl(
             provider=CloudProviders.aws.value,
-            host_url=f"{parsed_url.scheme}://{parsed_url.netloc.partition('.')[2]}",
-            bucket_name=parsed_url.netloc.split(".")[0],
-            path=parsed_url.path.lstrip("/"),
+            host_url=f"{parsed_url.scheme}://{host}",
+            bucket_name=bucket_name,
+            path=path,
         )
     else:
         raise ValueError(f"{parsed_url.netloc} cloud provider is not supported by CVAT")

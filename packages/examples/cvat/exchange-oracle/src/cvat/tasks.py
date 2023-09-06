@@ -135,15 +135,14 @@ def create_task(escrow_address: str, chain_id: int) -> None:
 
     # Task configuration creation
     data_filenames = cloud_service.list_files(
-        data_bucket_host.replace("minio", "localhost"),
+        data_bucket_host,
         data_bucket_name,
         data_bucket_path,
     )
     data_filenames = filter_image_files(data_filenames)
 
     gt_file_data = cloud_service.download_file(
-        # TODO: remove mock
-        gt_bucket_host.replace("minio", "localhost"),
+        gt_bucket_host,
         gt_bucket_name,
         gt_filename,
     )

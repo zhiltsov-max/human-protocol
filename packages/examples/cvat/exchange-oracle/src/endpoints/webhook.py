@@ -1,10 +1,11 @@
 from typing import Union
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from src.chain.escrow import validate_escrow
+from src.core.types import OracleWebhookTypes
 from src.db import SessionLocal
 from src.schemas.webhook import OracleWebhook, OracleWebhookResponse
 import src.services.webhook as oracle_db_service
+from src.utils.time import utcnow
 from src.validators.signature import validate_oracle_webhook_signature
 
 router = APIRouter()
@@ -17,11 +18,16 @@ async def receive_oracle_webhook(
     human_signature: Union[str, None] = Header(default=None),
 ) -> OracleWebhookResponse:
     try:
-        # TODO: add allowed sender type checks
-        sender_type = await validate_oracle_webhook_signature(
-            request, human_signature, webhook
-        )
-        validate_escrow(webhook.chain_id, webhook.escrow_address)
+        # TODO: remove demo mock
+        if not human_signature:
+            human_signature = "launcher-{}".format(utcnow().timestamp())
+            sender_type = OracleWebhookTypes.job_launcher
+
+        else:
+            # TODO: add allowed sender type checks
+            sender_type = await validate_oracle_webhook_signature(
+                request, human_signature, webhook
+            )
 
         with SessionLocal.begin() as session:
             webhook_id = oracle_db_service.inbox.create_webhook(

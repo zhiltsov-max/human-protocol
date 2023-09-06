@@ -171,15 +171,12 @@ def process_outgoing_recording_oracle_webhooks():
                         webhook.event_data,
                     )
 
-                    # TODO: remove mock
-                    import json
-
-                    serialized_data = json.dumps(body).encode()
-                    signature = f"excor-{webhook.created_at}"
-                    # serialized_data, signature = prepare_signed_message(
-                    #     webhook.escrow_address, webhook.chain_id,
-                    #     body=body, timestamp=webhook.timestamp
-                    # ))
+                    serialized_data, signature = prepare_signed_message(
+                        webhook.escrow_address,
+                        webhook.chain_id,
+                        body=body,
+                        timestamp=webhook.created_at,
+                    )
 
                     headers = {"human-signature": signature}
                     webhook_url = get_recording_oracle_url(
