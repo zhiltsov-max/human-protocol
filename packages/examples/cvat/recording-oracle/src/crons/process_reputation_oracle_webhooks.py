@@ -47,13 +47,13 @@ def process_outgoing_reputation_oracle_webhooks():
                         webhook.chain_id,
                         webhook.event_type,
                         webhook.event_data,
+                        timestamp=None,  # TODO: reputation oracle doesn't support
                     )
 
                     serialized_data, signature = prepare_signed_message(
                         webhook.escrow_address,
                         webhook.chain_id,
                         body=body,
-                        timestamp=webhook.created_at,
                     )
 
                     headers = {"human-signature": signature}

@@ -1,6 +1,6 @@
 from datetime import datetime
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
 from web3.providers.rpc import HTTPProvider
@@ -48,7 +48,7 @@ def serialize_message(message: Any) -> str:
     return json.dumps(message, separators=(",", ":"))
 
 
-def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
+def sign_message(chain_id: Networks, message) -> str:
     w3 = get_web3(chain_id)
     private_key = ""
     match chain_id:
@@ -71,8 +71,6 @@ def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
 
 
 def recover_signer(chain_id: Networks, message, signature: str) -> str:
-    # TODO: handle timestamp use
-
     w3 = get_web3(chain_id)
     message_hash = encode_defunct(text=serialize_message(message))
     signer = w3.eth.account.recover_message(message_hash, signature=signature)

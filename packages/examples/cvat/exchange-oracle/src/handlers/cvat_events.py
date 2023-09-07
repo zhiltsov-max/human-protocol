@@ -2,16 +2,18 @@ from typing import List
 from dateutil.parser import parse as parse_aware_datetime
 from src.db import SessionLocal
 from src.core.types import AssignmentStatus, CvatEventTypes, JobStatuses
-from src.log import get_root_logger
+from src.log import ROOT_LOGGER_NAME
 
 import src.models.cvat as models
 import src.services.cvat as cvat_service
 import src.cvat.api_calls as cvat_api
 from src.utils.logging import get_function_logger
 
+module_logger_name = f"{ROOT_LOGGER_NAME}.cron.handler"
+
 
 def handle_update_job_event(payload: dict) -> None:
-    logger = get_function_logger(get_root_logger().getChild("handler"))
+    logger = get_function_logger(module_logger_name)
 
     with SessionLocal.begin() as session:
         job_id = payload.job["id"]
@@ -96,7 +98,7 @@ def handle_update_job_event(payload: dict) -> None:
 
 
 def handle_create_job_event(payload: dict) -> None:
-    logger = get_function_logger(get_root_logger().getChild("handler"))
+    logger = get_function_logger(module_logger_name)
 
     with SessionLocal.begin() as session:
         if payload.job["type"] != "annotation":

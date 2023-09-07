@@ -15,10 +15,14 @@ def prepare_outgoing_webhook_body(
     chain_id: Networks,
     event_type: str,
     event_data: dict,
+    timestamp: Optional[datetime],
 ) -> Dict:
     body = {"escrow_address": escrow_address, "chain_id": chain_id}
 
-    event = parse_event(OracleWebhookTypes.recording_oracle, event_type, event_data)
+    if timestamp:
+        body["timestamp"] = timestamp.isoformat(" ")
+
+    event = parse_event(OracleWebhookTypes.exchange_oracle, event_type, event_data)
     body["event_type"] = event_type
     body["event_data"] = event.dict()
 
@@ -28,7 +32,6 @@ def prepare_outgoing_webhook_body(
 def prepare_signed_message(
     escrow_address: str,
     chain_id: Networks,
-    timestamp: datetime,
     message: Optional[str] = None,
     body: Optional[dict] = None,
 ) -> Tuple[str, str]:
@@ -42,7 +45,7 @@ def prepare_signed_message(
     ), "Either 'message' or 'body' expected"
 
     signature, serialized_message = sign_message(
-        chain_id, body if body is not None else message, timestamp=timestamp
+        chain_id, body if body is not None else message
     )
 
     return serialized_message, signature

@@ -48,7 +48,7 @@ def serialize_message(message: Any) -> str:
     return json.dumps(message, separators=(",", ":"))
 
 
-def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
+def sign_message(chain_id: Networks, message) -> str:
     w3 = get_web3(chain_id)
     private_key = ""
     match chain_id:
@@ -61,7 +61,6 @@ def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
         case _:
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
-    # TODO: add timestamp use
     serialized_message = serialize_message(message)
     signed_message = w3.eth.account.sign_message(
         encode_defunct(text=serialized_message), private_key
@@ -71,8 +70,6 @@ def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
 
 
 def recover_signer(chain_id: Networks, message, signature: str) -> str:
-    # TODO: handle timestamp use
-
     w3 = get_web3(chain_id)
     message_hash = encode_defunct(text=serialize_message(message))
     signer = w3.eth.account.recover_message(message_hash, signature=signature)

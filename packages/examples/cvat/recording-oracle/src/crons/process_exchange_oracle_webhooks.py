@@ -198,12 +198,13 @@ def handle_exchange_oracle_event(
                     validation_metafile,
                 )
 
-                escrow.store_results(
-                    webhook.chain_id,
-                    webhook.escrow_address,
-                    f"{Config.storage_config.bucket_url()}{recor_merged_annotations_path}",
-                    compute_resulting_annotations_hash(merged_annotations),
-                )
+                # TODO: uncomment (the operation requires a payment from the oracle wallet)
+                # escrow.store_results(
+                #     webhook.chain_id,
+                #     webhook.escrow_address,
+                #     f"{Config.storage_config.bucket_url()}{recor_merged_annotations_path}",
+                #     compute_resulting_annotations_hash(merged_annotations),
+                # )
 
                 oracle_db_service.outbox.create_webhook(
                     db_session,
@@ -270,13 +271,13 @@ def process_outgoing_exchange_oracle_webhooks():
                         webhook.chain_id,
                         webhook.event_type,
                         webhook.event_data,
+                        timestamp=webhook.created_at,
                     )
 
                     serialized_data, signature = prepare_signed_message(
                         webhook.escrow_address,
                         webhook.chain_id,
                         body=body,
-                        timestamp=webhook.created_at,
                     )
 
                     headers = {"human-signature": signature}
