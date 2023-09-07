@@ -17,7 +17,6 @@ async def receive_oracle_webhook(
     human_signature: Union[str, None] = Header(default=None),
 ) -> OracleWebhookResponse:
     try:
-        # TODO: add allowed sender type checks
         sender = await validate_oracle_webhook_signature(
             request, human_signature, webhook
         )

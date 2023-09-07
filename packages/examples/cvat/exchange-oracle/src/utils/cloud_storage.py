@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-import re
 from typing import Optional
 from urllib.parse import urlparse
 
 from src.core.config import Config
 from src.core.types import CloudProviders
+from src.utils.net import is_ipv4
 
 
 @dataclass
@@ -36,10 +36,7 @@ def parse_bucket_url(data_url: str) -> ParsedBucketUrl:
     #         bucket_name=parsed_url.netloc.split(".")[0],
     #     )
     elif Config.features.enable_custom_cloud_host:
-        is_ipv4 = re.fullmatch(
-            r"(\d{1,3}\.){3}(\d{1,3})(?:\:\d{1,5})", parsed_url.netloc
-        )
-        if is_ipv4:
+        if is_ipv4(parsed_url.netloc):
             host = parsed_url.netloc
             bucket_name, path = parsed_url.path.lstrip("/").split("/", maxsplit=1)
         else:

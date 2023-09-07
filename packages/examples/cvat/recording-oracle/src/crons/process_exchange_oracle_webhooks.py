@@ -12,10 +12,9 @@ from src.core.oracle_events import (
 
 from src.core.config import Config
 from src.db import SessionLocal
-from src.core.config import CronConfig, StorageConfig
 from src.log import ROOT_LOGGER_NAME
 from src.models.webhook import Webhook
-from src.utils.assignments import parse_manifest
+from src.utils.assignments import compute_resulting_annotations_hash, parse_manifest
 from src.utils.cloud_storage import parse_bucket_url
 from src.utils.logging import get_function_logger
 from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
@@ -54,7 +53,7 @@ def process_incoming_exchange_oracle_webhooks():
             webhooks = oracle_db_service.inbox.get_pending_webhooks(
                 session,
                 OracleWebhookTypes.exchange_oracle,
-                CronConfig.process_exchange_oracle_webhooks_chunk_size,
+                Config.cron_config.process_exchange_oracle_webhooks_chunk_size,
             )
 
             for webhook in webhooks:
@@ -99,7 +98,9 @@ def handle_exchange_oracle_event(
                 escrow.get_escrow_manifest(webhook.chain_id, webhook.escrow_address)
             )
 
-            excor_bucket_host = Config.exchange_oracle_storage_config.endpoint_url
+            excor_bucket_host = (
+                Config.exchange_oracle_storage_config.provider_endpoint_url()
+            )
             excor_bucket_name = (
                 Config.exchange_oracle_storage_config.results_bucket_name
             )
@@ -180,9 +181,9 @@ def handle_exchange_oracle_event(
                 )
 
                 storage_client = cloud_client.S3Client(
-                    StorageConfig.endpoint_url,
-                    access_key=StorageConfig.access_key,
-                    secret_key=StorageConfig.secret_key,
+                    Config.storage_config.provider_endpoint_url(),
+                    access_key=Config.storage_config.access_key,
+                    secret_key=Config.storage_config.secret_key,
                 )
 
                 # TODO: add encryption
@@ -197,13 +198,12 @@ def handle_exchange_oracle_event(
                     validation_metafile,
                 )
 
-                # TODO:
-                # escrow.store_results(
-                #     webhook.chain_id,
-                #     webhook.escrow_address,
-                #     f"{StorageConfig.bucket_url()}{recor_merged_annotations_path}",
-                #     "samplehash",  # TODO: add hash
-                # )
+                escrow.store_results(
+                    webhook.chain_id,
+                    webhook.escrow_address,
+                    f"{Config.storage_config.bucket_url()}{recor_merged_annotations_path}",
+                    compute_resulting_annotations_hash(merged_annotations),
+                )
 
                 oracle_db_service.outbox.create_webhook(
                     db_session,
@@ -254,7 +254,7 @@ def process_outgoing_exchange_oracle_webhooks():
             webhooks = oracle_db_service.outbox.get_pending_webhooks(
                 session,
                 OracleWebhookTypes.exchange_oracle,
-                CronConfig.process_exchange_oracle_webhooks_chunk_size,
+                Config.cron_config.process_exchange_oracle_webhooks_chunk_size,
             )
             for webhook in webhooks:
                 try:

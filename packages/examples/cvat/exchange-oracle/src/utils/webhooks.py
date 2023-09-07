@@ -38,9 +38,8 @@ def prepare_signed_message(
         body is not None
     ), "Either 'message' or 'body' expected"
 
-    if not message and body:
-        message = json.dumps(body)
+    signature, serialized_message = sign_message(
+        chain_id, body if body is not None else message, timestamp=timestamp
+    )
 
-    signature = sign_message(chain_id, message, timestamp=timestamp)
-
-    return message, signature
+    return serialized_message, signature

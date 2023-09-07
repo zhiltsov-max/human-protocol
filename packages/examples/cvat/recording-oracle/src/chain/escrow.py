@@ -5,6 +5,7 @@ from human_protocol_sdk.escrow import EscrowClient
 from human_protocol_sdk.storage import StorageClient
 
 from src.chain.web3 import get_web3
+from src.core.config import Config
 
 
 def get_escrow_manifest(chain_id: int, escrow_address: str) -> dict:
@@ -58,3 +59,16 @@ def get_reputation_oracle_address(chain_id: int, escrow_address: str) -> str:
     )
 
     return reputation_oracle_address
+
+
+def get_exchange_oracle_address(chain_id: int, escrow_address: str) -> str:
+    # TODO: remove mock (not supported yet)
+    assert Config.localhost.exchange_oracle_address
+    return Config.localhost.exchange_oracle_address
+
+    web3 = get_web3(chain_id)
+    escrow_client = EscrowClient(web3)
+
+    exchange_oracle_address = escrow_client.get_exchange_oracle_address(escrow_address)
+
+    return exchange_oracle_address

@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from src.utils.logging import parse_log_level
+from src.utils.net import is_ipv4
 
 load_dotenv()
 
@@ -23,7 +24,7 @@ class Postgres:
 
     @classmethod
     def connection_url(cls):
-        return f"postgresql://{Postgres.user}:{Postgres.password}@{Postgres.host}:{Postgres.port}/{Postgres.database}"
+        return f"postgresql://{cls.user}:{cls.password}@{cls.host}:{cls.port}/{cls.database}"
 
 
 class PolygonMainnetConfig:
@@ -52,6 +53,7 @@ class LocalhostConfig:
     )
 
     exchange_oracle_url = os.environ.get("LOCALHOST_EXCHANGE_ORACLE_URL")
+    exchange_oracle_address = os.environ.get("LOCALHOST_EXCHANGE_ORACLE_ADDRESS")
     reputation_oracle_url = os.environ.get("LOCALHOST_REPUTATION_ORACLE_URL")
 
 
@@ -76,13 +78,22 @@ class StorageConfig:
     access_key = os.environ.get("STORAGE_ACCESS_KEY", "")
     secret_key = os.environ.get("STORAGE_SECRET_KEY", "")
     results_bucket_name = os.environ.get("STORAGE_RESULTS_BUCKET_NAME", "")
-    secure = False if os.environ.get("STORAGE_USE_SSL", "true") == "false" else True
+    secure = str_to_bool(os.environ.get("STORAGE_USE_SSL", "true"))
+
+    @classmethod
+    def provider_endpoint_url(cls):
+        scheme = "https://" if cls.secure else "http://"
+
+        return f"{scheme}{cls.endpoint_url}"
 
     @classmethod
     def bucket_url(cls):
-        return (
-            f"https://{StorageConfig.results_bucket_name}.{StorageConfig.endpoint_url}/"
-        )
+        scheme = "https://" if cls.secure else "http://"
+
+        if is_ipv4(cls.endpoint_url):
+            return f"{scheme}{cls.endpoint_url}/{cls.results_bucket_name}/"
+        else:
+            return f"{scheme}{cls.results_bucket_name}.{cls.endpoint_url}/"
 
 
 class ExchangeOracleStorageConfig:
@@ -95,17 +106,22 @@ class ExchangeOracleStorageConfig:
     results_bucket_name = os.environ.get(
         "EXCHANGE_ORACLE_STORAGE_RESULTS_BUCKET_NAME", ""
     )
-    secure = (
-        False
-        if os.environ.get("EXCHANGE_ORACLE_STORAGE_USE_SSL", "true") == "false"
-        else True
-    )
+    secure = str_to_bool(os.environ.get("EXCHANGE_ORACLE_STORAGE_USE_SSL", "true"))
+
+    @classmethod
+    def provider_endpoint_url(cls):
+        scheme = "https://" if cls.secure else "http://"
+
+        return f"{scheme}{cls.endpoint_url}"
 
     @classmethod
     def bucket_url(cls):
-        return (
-            f"https://{StorageConfig.results_bucket_name}.{StorageConfig.endpoint_url}/"
-        )
+        scheme = "https://" if cls.secure else "http://"
+
+        if is_ipv4(cls.endpoint_url):
+            return f"{scheme}{cls.endpoint_url}/{cls.results_bucket_name}/"
+        else:
+            return f"{scheme}{cls.results_bucket_name}.{cls.endpoint_url}/"
 
 
 class FeaturesConfig:

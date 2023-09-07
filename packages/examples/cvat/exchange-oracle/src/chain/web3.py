@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+from typing import Any, Dict
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
 from web3.providers.rpc import HTTPProvider
@@ -43,6 +44,10 @@ def get_web3(chain_id: Networks):
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
 
+def serialize_message(message: Any) -> str:
+    return json.dumps(message, separators=(",", ":"))
+
+
 def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
     w3 = get_web3(chain_id)
     private_key = ""
@@ -57,18 +62,19 @@ def sign_message(chain_id: Networks, message, timestamp: datetime) -> str:
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
     # TODO: add timestamp use
+    serialized_message = serialize_message(message)
     signed_message = w3.eth.account.sign_message(
-        encode_defunct(text=json.dumps(message, separators=(",", ":"))), private_key
+        encode_defunct(text=serialized_message), private_key
     )
 
-    return signed_message.signature.hex()
+    return signed_message.signature.hex(), serialized_message
 
 
 def recover_signer(chain_id: Networks, message, signature: str) -> str:
     # TODO: handle timestamp use
 
     w3 = get_web3(chain_id)
-    message_hash = encode_defunct(text=json.dumps(message, separators=(",", ":")))
+    message_hash = encode_defunct(text=serialize_message(message))
     signer = w3.eth.account.recover_message(message_hash, signature=signature)
 
     return signer

@@ -15,8 +15,10 @@ def get_role_by_address(chain_id: int, address: str) -> str:
 
 
 def get_exchange_oracle_url(chain_id: int, escrow_address: str) -> str:
-    if url := Config.localhost.exchange_oracle_url:
-        return url
+    # TODO: remove mock (not implemented yet)
+    url = Config.localhost.exchange_oracle_url
+    assert url
+    return url
 
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)

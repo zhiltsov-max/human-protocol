@@ -1,22 +1,37 @@
 from ast import literal_eval
-from fastapi import Request
+from http import HTTPStatus
+from fastapi import HTTPException, Request
 
-from src.chain.kvstore import get_role_by_address
+from src.chain.escrow import get_exchange_oracle_address
 from src.chain.web3 import recover_signer
 from src.core.types import OracleWebhookTypes
+from src.schemas.webhook import OracleWebhook
 
 
 async def validate_oracle_webhook_signature(
-    request: Request, human_signature: str, webhook: dict
+    request: Request, signature: str, webhook: OracleWebhook
 ) -> OracleWebhookTypes:
     data: bytes = await request.body()
     message: dict = literal_eval(data.decode("utf-8"))
 
-    signer = recover_signer(webhook.chain_id, message, human_signature)
+    signer = recover_signer(webhook.chain_id, message, signature)
 
-    role = get_role_by_address(webhook.chain_id, signer)
+    exchange_oracle_address = get_exchange_oracle_address(
+        webhook.chain_id, webhook.escrow_address
+    )
+    possible_signers = {
+        OracleWebhookTypes.exchange_oracle: exchange_oracle_address,
+    }
 
-    if not role == "exchange_oracle":
-        raise ValueError(
-            f"Webhook sender role doesn't match. Expected: 'exchange_oracle', received: {role}."
-        )
+    matched_signer = next(
+        (
+            s_type
+            for s_type in possible_signers
+            if signer.lower() == possible_signers[s_type].lower()
+        ),
+        None,
+    )
+    if not matched_signer:
+        raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED)
+
+    return matched_signer

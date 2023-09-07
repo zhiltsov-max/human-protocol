@@ -269,7 +269,7 @@ def retrieve_annotations() -> None:
                 annotation_files.extend(job_annotations.values())
 
                 storage_client = cloud_client.S3Client(
-                    StorageConfig.endpoint_url,
+                    StorageConfig.provider_endpoint_url(),
                     access_key=StorageConfig.access_key,
                     secret_key=StorageConfig.secret_key,
                 )
