@@ -73,7 +73,12 @@ def handle_job_launcher_event(
     match webhook.event_type:
         case JobLauncherEventType.escrow_created:
             try:
-                validate_escrow(webhook.chain_id, webhook.escrow_address)
+                validate_escrow(
+                    webhook.chain_id,
+                    webhook.escrow_address,
+                    accepted_states=[EscrowStatus.Launched, EscrowStatus.Pending],
+                    allow_no_funds=True,
+                )
 
                 if cvat_db_service.get_project_by_escrow_address(
                     db_session, webhook.escrow_address

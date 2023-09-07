@@ -12,7 +12,8 @@ def validate_escrow(
     chain_id: int,
     escrow_address: str,
     *,
-    accepted_states: List[Status] = [Status.Pending]
+    accepted_states: List[Status] = [Status.Pending],
+    allow_no_funds: bool = False
 ) -> None:
     assert accepted_states
 
@@ -27,7 +28,7 @@ def validate_escrow(
             )
         )
 
-    if escrow_status == Status.Pending:
+    if escrow_status == Status.Pending and not allow_no_funds:
         if escrow_client.get_balance(escrow_address) == 0:
             raise ValueError("Escrow doesn't have funds")
 
