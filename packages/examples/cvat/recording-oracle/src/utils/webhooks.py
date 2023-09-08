@@ -1,5 +1,4 @@
 from datetime import datetime
-import json
 from typing import Dict, Optional, Tuple
 
 from src.chain.web3 import sign_message
@@ -22,7 +21,7 @@ def prepare_outgoing_webhook_body(
     if timestamp:
         body["timestamp"] = timestamp.isoformat(" ")
 
-    event = parse_event(OracleWebhookTypes.exchange_oracle, event_type, event_data)
+    event = parse_event(OracleWebhookTypes.recording_oracle, event_type, event_data)
     body["event_type"] = event_type
     body["event_data"] = event.dict()
 

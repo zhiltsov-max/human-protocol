@@ -1,5 +1,4 @@
 from datetime import datetime
-import json
 from typing import Dict, Optional, Tuple
 
 from src.chain.web3 import sign_message

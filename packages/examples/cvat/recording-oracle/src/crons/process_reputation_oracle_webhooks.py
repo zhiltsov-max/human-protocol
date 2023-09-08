@@ -50,6 +50,14 @@ def process_outgoing_reputation_oracle_webhooks():
                         timestamp=None,  # TODO: reputation oracle doesn't support
                     )
 
+                    # TODO: remove demo compatibility code
+                    # vvv
+                    body["chainId"] = body.pop("chain_id")
+                    body["escrowAddress"] = body.pop("escrow_address")
+                    body.pop("event_type")
+                    body.pop("event_data")
+                    # ^^^
+
                     serialized_data, signature = prepare_signed_message(
                         webhook.escrow_address,
                         webhook.chain_id,
@@ -62,7 +70,11 @@ def process_outgoing_reputation_oracle_webhooks():
                     )
                     with httpx.Client() as client:
                         response = client.post(
-                            webhook_url, headers=headers, data=serialized_data
+                            webhook_url,
+                            headers=headers,
+                            # TODO: enable when signature checks are added
+                            # data=serialized_data
+                            json=body,
                         )
                         response.raise_for_status()
 
