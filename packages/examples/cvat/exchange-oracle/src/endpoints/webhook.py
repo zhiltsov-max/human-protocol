@@ -18,7 +18,7 @@ async def receive_oracle_webhook(
     human_signature: Union[str, None] = Header(default=None),
 ) -> OracleWebhookResponse:
     try:
-        # TODO: remove demo mock
+        # TODO: remove mock
         if not human_signature:
             human_signature = "launcher-{}".format(utcnow().timestamp())
             sender_type = OracleWebhookTypes.job_launcher

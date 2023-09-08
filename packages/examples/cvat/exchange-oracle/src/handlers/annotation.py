@@ -1,10 +1,27 @@
+from glob import glob
 import io
+import os
+from defusedxml import ElementTree as ET
+from tempfile import TemporaryDirectory
 from typing import List, Dict
+import zipfile
 
 from attrs import define
+import datumaro as dm
+
 
 from src.core.annotation_meta import ANNOTATION_METAFILE_NAME, AnnotationMeta, JobMeta
+from src.core.manifest import TaskManifest
+from src.core.types import TaskType
+from src.cvat.tasks import DM_DATASET_FORMAT_MAPPING
 from src.models.cvat import Job
+
+
+CVAT_EXPORT_FORMAT_MAPPING = {
+    TaskType.image_label_binary: "CVAT for images 1.1",
+    TaskType.image_points: "CVAT for images 1.1",
+    TaskType.image_boxes: "COCO 1.0",
+}
 
 
 @define
@@ -35,3 +52,152 @@ def prepare_annotation_metafile(
     return FileDescriptor(
         ANNOTATION_METAFILE_NAME, file=io.BytesIO(meta.json().encode())
     )
+
+
+def flatten_points(input_points: List[dm.Points]) -> List[dm.Points]:
+    results = []
+
+    for pts in input_points:
+        for point_idx in range(len(pts.points) // 2):
+            point_x = pts.points[2 * point_idx + 0]
+            point_y = pts.points[2 * point_idx + 1]
+            results.append(dm.Points([point_x, point_y], label=pts.label))
+
+    return results
+
+
+def fix_cvat_annotations(dataset_root: str):
+    for annotation_filename in glob(
+        os.path.join(dataset_root, "**/*.xml"), recursive=True
+    ):
+        with open(annotation_filename, "rb+") as f:
+            doc = ET.parse(f)
+            doc_root = doc.getroot()
+
+            if doc_root.find("meta/project"):
+                # put labels into each task, if needed
+                # datumaro doesn't support /meta/project/ tag, but works with tasks,
+                # which is nested in the meta/project/
+                labels_element = doc_root.find("meta/project/labels")
+                if not labels_element:
+                    continue
+
+                for task_element in doc_root.iterfind("meta/project/tasks/task"):
+                    task_element.append(labels_element)
+            elif job_meta := doc_root.find("meta/job"):
+                # just rename the job into task for the same reasons
+                job_meta.tag = "task"
+            else:
+                continue
+
+            f.seek(0)
+            f.truncate()
+            doc.write(f, encoding="utf-8")
+
+
+def convert_point_arrays_dataset_to_1_point_skeletons(
+    dataset: dm.Dataset, labels: List[str]
+) -> dm.Dataset:
+    def _get_skeleton_label(original_label: str) -> str:
+        return original_label + "_sk"
+
+    new_label_cat = dm.LabelCategories.from_iterable(
+        [_get_skeleton_label(label) for label in labels]
+        + [(label, _get_skeleton_label(label)) for label in labels]
+    )
+    new_points_cat = dm.PointsCategories.from_iterable(
+        (new_label_cat.find(_get_skeleton_label(label))[0], [label]) for label in labels
+    )
+    converted_dataset = dm.Dataset(
+        categories={
+            dm.AnnotationType.label: new_label_cat,
+            dm.AnnotationType.points: new_points_cat,
+        },
+        media_type=dm.Image,
+    )
+
+    label_id_map: Dict[int, int] = {
+        original_id: new_label_cat.find(
+            label.name, parent=_get_skeleton_label(label.name)
+        )[0]
+        for original_id, label in enumerate(
+            dataset.categories()[dm.AnnotationType.label]
+        )
+    }  # old id -> new id
+
+    for sample in dataset:
+        points = [a for a in sample.annotations if isinstance(a, dm.Points)]
+        points = flatten_points(points)
+
+        skeletons = [
+            dm.Skeleton(
+                [p.wrap(label=label_id_map[p.label])],
+                label=new_label_cat.find(_get_skeleton_label(labels[p.label]))[0],
+            )
+            for p in points
+        ]
+
+        converted_dataset.put(sample.wrap(annotations=skeletons))
+
+    return converted_dataset
+
+
+def postprocess_annotations(annotations: List[FileDescriptor], manifest: TaskManifest):
+    """
+    Processes annotations and updates the files list inplace
+    """
+
+    task_type = manifest.annotation.type
+
+    if task_type != TaskType.image_points:
+        return  # CVAT export is fine
+
+    # We need to convert point arrays, which cannot be represented in COCO directly,
+    # into the 1-point skeletons, compatible with COCO person keypoints, which is the
+    # required output format
+    input_format = "cvat"
+    resulting_format = DM_DATASET_FORMAT_MAPPING[task_type]
+
+    with TemporaryDirectory() as tempdir:
+        for ann_descriptor in annotations:
+            if not zipfile.is_zipfile(ann_descriptor.file):
+                raise ValueError("Annotation files must be zip files")
+            ann_descriptor.file.seek(0)
+
+            extract_dir = os.path.join(
+                tempdir, os.path.splitext(os.path.basename(ann_descriptor.filename))[0]
+            )
+            extract_zip_archive(ann_descriptor.file, extract_dir)
+
+            fix_cvat_annotations(extract_dir)
+            dataset = dm.Dataset.import_from(extract_dir, input_format)
+
+            converted_dataset = convert_point_arrays_dataset_to_1_point_skeletons(
+                dataset, labels=[label.name for label in manifest.annotation.labels]
+            )
+
+            export_dir = os.path.join(
+                tempdir,
+                os.path.splitext(os.path.basename(ann_descriptor.filename))[0]
+                + "_conv",
+            )
+            converted_dataset.export(export_dir, resulting_format, save_images=False)
+
+            converted_dataset_archive = io.BytesIO()
+            write_dir_to_zip_archive(export_dir, converted_dataset_archive)
+            converted_dataset_archive.seek(0)
+
+            ann_descriptor.file = converted_dataset_archive
+
+
+def extract_zip_archive(src_file: io.RawIOBase, extract_dir: str):
+    os.makedirs(extract_dir, exist_ok=True)
+
+    with zipfile.ZipFile(src_file) as zip_file:
+        zip_file.extractall(extract_dir)
+
+
+def write_dir_to_zip_archive(src_dir: str, dst_file: io.RawIOBase):
+    with zipfile.ZipFile(dst_file, "w") as archive_zip_file:
+        for fn in glob(os.path.join(src_dir, "**/*.*"), recursive=True):
+            archive_zip_file.write(fn, os.path.relpath(fn, src_dir))

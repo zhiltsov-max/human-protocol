@@ -1,4 +1,5 @@
 from typing import Dict, List
+from src.chain.escrow import get_escrow_manifest, validate_escrow
 
 from src.core.oracle_events import (
     ExchangeOracleEvent_TaskCreationFailed,
@@ -16,8 +17,10 @@ from src.core.types import (
     JobStatuses,
 )
 from src.handlers.annotation import (
+    postprocess_annotations,
     prepare_annotation_metafile,
     FileDescriptor,
+    CVAT_EXPORT_FORMAT_MAPPING,
 )
 from src.log import ROOT_LOGGER_NAME
 import src.models.cvat as cvat_models
@@ -25,8 +28,7 @@ import src.services.cvat as cvat_service
 import src.services.webhook as oracle_db_service
 import src.services.cloud.client as cloud_client
 import src.cvat.api_calls as cvat_api
-from src.cvat.tasks import CVAT_EXPORT_FORMAT_MAPPING
-from src.utils.assignments import compose_output_annotation_filename
+from src.utils.assignments import compose_output_annotation_filename, parse_manifest
 from src.utils.logging import get_function_logger
 
 
@@ -222,6 +224,12 @@ def retrieve_annotations() -> None:
                     )
                     continue
 
+                validate_escrow(project.chain_id, project.escrow_address)
+
+                manifest = parse_manifest(
+                    get_escrow_manifest(project.chain_id, project.escrow_address)
+                )
+
                 logger.debug(
                     f"Downloading results for the project (escrow_address={project.escrow_address})"
                 )
@@ -265,8 +273,10 @@ def retrieve_annotations() -> None:
                 annotation_metafile = prepare_annotation_metafile(
                     jobs=jobs, job_annotations=job_annotations
                 )
-                annotation_files.append(annotation_metafile)
                 annotation_files.extend(job_annotations.values())
+                postprocess_annotations(annotation_files, manifest=manifest)
+
+                annotation_files.append(annotation_metafile)
 
                 storage_client = cloud_client.S3Client(
                     StorageConfig.provider_endpoint_url(),
