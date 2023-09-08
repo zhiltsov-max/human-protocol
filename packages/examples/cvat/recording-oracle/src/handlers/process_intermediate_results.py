@@ -2,7 +2,7 @@ import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Union
+from typing import Dict, List, Type, Union
 from attrs import define
 import io
 import numpy as np
@@ -20,7 +20,11 @@ from src.core.manifest import TaskManifest
 from src.core.types import TaskType, TaskType
 from src.core.validation_meta import JobMeta, ResultMeta, ValidationMeta
 import src.services.validation as db_service
-from src.validation.dataset_comparison import DatasetComparator
+from src.validation.dataset_comparison import (
+    BboxDatasetComparator,
+    DatasetComparator,
+    PointsDatasetComparator,
+)
 
 
 @define
@@ -41,6 +45,12 @@ DM_DATASET_FORMAT_MAPPING = {
     TaskType.image_boxes: "coco_instances",
 }
 
+DM_GT_DATASET_FORMAT_MAPPING = {
+    TaskType.image_label_binary: "cvat_images",
+    TaskType.image_points: "coco_instances",  # we compare points against boxes
+    TaskType.image_boxes: "coco_instances",
+}
+
 
 def extract_zip_archive(data: io.RawIOBase, dst_dir: Path, *, create_dir: bool = True):
     if create_dir:
@@ -48,6 +58,13 @@ def extract_zip_archive(data: io.RawIOBase, dst_dir: Path, *, create_dir: bool =
 
     with zipfile.ZipFile(data) as f:
         f.extractall(dst_dir)
+
+
+DATASET_COMPARATOR_TYPE_MAP: Dict[TaskType, Type[DatasetComparator]] = {
+    # TaskType.image_label_binary: TagDatasetComparator, # TODO
+    TaskType.image_boxes: BboxDatasetComparator,
+    TaskType.image_points: PointsDatasetComparator,
+}
 
 
 def process_intermediate_results(
@@ -75,10 +92,10 @@ def process_intermediate_results(
         gt_dataset_path = tempdir / "gt.json"
         gt_dataset_path.write_bytes(gt_annotations.read())
         gt_dataset = dm.Dataset.import_from(
-            os.fspath(gt_dataset_path), format=dataset_format
+            os.fspath(gt_dataset_path), format=DM_GT_DATASET_FORMAT_MAPPING[task_type]
         )
 
-        comparator = DatasetComparator(
+        comparator = DATASET_COMPARATOR_TYPE_MAP[task_type](
             min_similarity_threshold=manifest.validation.min_quality
         )
 

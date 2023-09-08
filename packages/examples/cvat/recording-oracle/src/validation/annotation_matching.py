@@ -11,6 +11,7 @@ from typing import (
 import numpy as np
 
 from scipy.optimize import linear_sum_assignment
+from scipy.stats import gmean
 
 
 Annotation = TypeVar("Annotation")
@@ -24,9 +25,15 @@ class Bbox(NamedTuple):
     label: int
 
 
+class Point(NamedTuple):
+    x: float
+    y: float
+    label: int
+
+
 def bbox_iou(a_bbox: Bbox, b_bbox: Bbox) -> float:
     """
-    IoU computation for simple cases with bounding boxes
+    IoU computation for simple cases with axis-aligned bounding boxes
     """
 
     a_x, a_y, a_w, a_h = a_bbox[:4]
@@ -46,6 +53,32 @@ def bbox_iou(a_bbox: Bbox, b_bbox: Bbox) -> float:
     b_area = b_w * b_h
     union = a_area + b_area - intersection
     return intersection / union
+
+
+def point_to_bbox_cmp(bbox: Bbox, point: Point, *, rel_sigma: float = 0.5) -> float:
+    """
+    Checks that the point is within the axis-aligned bbox,
+    then measures the distance to the bbox center.
+
+    rel_sigma:
+    Expected sigma for human point placement within a bbox
+    the value is relative to the bbox sides size
+    e.g. 0.5 = the point is likely to be within the smaller bbox with sides 0.5w x 0.5h
+    around the GT bbox center
+    """
+    # bbox filter + 2d Gaussian + geomean
+
+    if not (
+        (bbox.x <= point.x <= bbox.x + bbox.w)
+        and (bbox.y <= point.y <= bbox.y + bbox.h)
+    ):
+        return 0
+
+    bbox_cx = bbox.x + bbox.w / 2
+    bbox_cy = bbox.y + bbox.h / 2
+    scale2sq = (rel_sigma**2) * 0.5 * np.array((bbox.w**2, bbox.h**2))
+    dists = np.abs((bbox_cx - point.x, bbox_cy - point.y))
+    return gmean(np.exp(-(dists**2) / scale2sq))
 
 
 class MatchResult(NamedTuple):
@@ -88,11 +121,11 @@ def match_annotations(
         a_matches = []
         b_matches = []
 
-    # matches: boxes we succeeded to match completely
-    # mispred: boxes we succeeded to match, having label mismatch
+    # matches: annotations we succeeded to match completely
+    # mispred: annotations we succeeded to match, having label mismatch
     matches = []
     mispred = []
-    # *_umatched: boxes of (*) we failed to match
+    # *_umatched: annotations of (*) we failed to match
     a_unmatched = []
     b_unmatched = []
 
