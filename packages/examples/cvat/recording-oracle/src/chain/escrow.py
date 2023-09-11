@@ -34,7 +34,7 @@ def validate_escrow(
     if escrow_status not in accepted_states:
         raise ValueError(
             "Escrow is not in any of the accepted states ({}). Current state: {}".format(
-                ", ".join(s.value for s in accepted_states), escrow_status.name
+                ", ".join(s.name for s in accepted_states), escrow_status.name
             )
         )
 
