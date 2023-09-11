@@ -1,5 +1,6 @@
 import io
 import logging
+import os
 from typing import Dict
 import httpx
 from sqlalchemy.orm import Session
@@ -198,13 +199,13 @@ def handle_exchange_oracle_event(
                     validation_metafile,
                 )
 
-                # TODO: uncomment (the operation requires a payment from the oracle wallet)
-                # escrow.store_results(
-                #     webhook.chain_id,
-                #     webhook.escrow_address,
-                #     f"{Config.storage_config.bucket_url()}{recor_merged_annotations_path}",
-                #     compute_resulting_annotations_hash(merged_annotations),
-                # )
+                escrow.store_results(
+                    webhook.chain_id,
+                    webhook.escrow_address,
+                    Config.storage_config.bucket_url()
+                    + os.path.dirname(recor_merged_annotations_path),
+                    compute_resulting_annotations_hash(merged_annotations),
+                )
 
                 oracle_db_service.outbox.create_webhook(
                     db_session,
