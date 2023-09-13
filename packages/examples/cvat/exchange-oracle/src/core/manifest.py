@@ -25,6 +25,9 @@ class AnnotationInfo(BaseModel):
     description: str = ""
     "Brief task description"
 
+    user_guide: str = ""
+    "User guide in markdown format"
+
     job_size: int = 10
     "Frames per job, validation frames are not included"
 

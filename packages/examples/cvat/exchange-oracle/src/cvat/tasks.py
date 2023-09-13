@@ -155,7 +155,11 @@ def create_task(escrow_address: str, chain_id: int) -> None:
     label_configuration = make_label_configuration(manifest)
 
     # Create a project
-    project = cvat_api.create_project(escrow_address, label_configuration)
+    project = cvat_api.create_project(
+        escrow_address,
+        labels=label_configuration,
+        user_guide=manifest.annotation.user_guide,
+    )
 
     # Setup webhooks for a project (update:task, update:job)
     webhook = cvat_api.create_cvat_webhook(project.id)

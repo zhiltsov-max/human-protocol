@@ -47,17 +47,28 @@ def create_cloudstorage(
             raise
 
 
-def create_project(escrow_address: str, labels: list) -> models.ProjectRead:
+def create_project(
+    escrow_address: str, labels: list, *, user_guide: str = ""
+) -> models.ProjectRead:
     logger = logging.getLogger("app")
     with get_api_client() as api_client:
-        project_write_request = models.ProjectWriteRequest(
-            name=escrow_address,
-            labels=labels,
-            owner_id=Config.cvat_config.cvat_admin_user_id,
-        )
         try:
-            (data, response) = api_client.projects_api.create(project_write_request)
-            return data
+            (project, response) = api_client.projects_api.create(
+                models.ProjectWriteRequest(
+                    name=escrow_address,
+                    labels=labels,
+                    owner_id=Config.cvat_config.cvat_admin_user_id,
+                )
+            )
+            if user_guide:
+                api_client.guides_api.create(
+                    annotation_guide_write_request=models.AnnotationGuideWriteRequest(
+                        project_id=project.id,
+                        markdown=user_guide,
+                    )
+                )
+
+            return project
         except exceptions.ApiException as e:
             logger.exception(f"Exception when calling ProjectsApi.create: {e}\n")
             raise
