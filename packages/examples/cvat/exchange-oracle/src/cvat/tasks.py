@@ -179,6 +179,7 @@ def create_task(escrow_address: str, chain_id: int) -> None:
             ),
             cvat_webhook_id=webhook.id,
         )
+        db_service.add_project_images(session, project.id, data_filenames)
 
     for job_filenames in job_configuration:
         task = cvat_api.create_task(project.id, escrow_address)

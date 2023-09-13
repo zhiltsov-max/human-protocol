@@ -2,7 +2,15 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from sqlalchemy import Column, String, DateTime, Enum, ForeignKey, Integer
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.sql import func
 
@@ -31,6 +39,10 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     cvat_webhook_id = Column(Integer, nullable=True)
+
+    images: Mapped[List["Image"]] = relationship(
+        back_populates="project", cascade="all, delete", passive_deletes=True
+    )
 
     tasks: Mapped[List["Task"]] = relationship(
         back_populates="project",
@@ -170,3 +182,21 @@ class Assignment(Base):
         return (
             f"Assignment. id={self.id} user={self.user.cvat_id} job={self.job.cvat_id}"
         )
+
+
+class Image(Base):
+    __tablename__ = "images"
+    id = Column(String, primary_key=True, index=True)
+    cvat_project_id = Column(
+        Integer, ForeignKey("projects.cvat_id", ondelete="CASCADE"), nullable=False
+    )
+    filename = Column(String, nullable=False)
+
+    project: Mapped["Project"] = relationship(back_populates="images")
+
+    __table_args__ = (
+        UniqueConstraint("cvat_project_id", "filename", name="_project_filename_uc"),
+    )
+
+    def __repr__(self):
+        return f"Image. id={self.id} cvat_project_id={self.cvat_project_id} filename={self.filename}"

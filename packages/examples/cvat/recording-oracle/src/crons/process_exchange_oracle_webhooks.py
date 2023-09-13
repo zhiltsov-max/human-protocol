@@ -191,7 +191,7 @@ def handle_exchange_oracle_event(
                 storage_client.create_file(
                     Config.storage_config.results_bucket_name,
                     recor_merged_annotations_path,
-                    merged_annotations,
+                    validation_results.resulting_annotations,
                 )
                 storage_client.create_file(
                     Config.storage_config.results_bucket_name,
@@ -204,7 +204,9 @@ def handle_exchange_oracle_event(
                     webhook.escrow_address,
                     Config.storage_config.bucket_url()
                     + os.path.dirname(recor_merged_annotations_path),
-                    compute_resulting_annotations_hash(merged_annotations),
+                    compute_resulting_annotations_hash(
+                        validation_results.resulting_annotations
+                    ),
                 )
 
                 oracle_db_service.outbox.create_webhook(

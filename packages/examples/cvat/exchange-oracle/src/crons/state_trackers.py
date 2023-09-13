@@ -262,19 +262,26 @@ def retrieve_annotations() -> None:
                 project_annotations_file = cvat_api.get_project_annotations(
                     project.cvat_id, format_name=annotation_format
                 )
-                annotation_files: List[FileDescriptor] = []
-                annotation_files.append(
-                    FileDescriptor(
-                        filename=RESULTING_ANNOTATIONS_FILE,
-                        file=project_annotations_file,
-                    )
+                project_annotations_file_desc = FileDescriptor(
+                    filename=RESULTING_ANNOTATIONS_FILE,
+                    file=project_annotations_file,
                 )
+
+                annotation_files: List[FileDescriptor] = []
+                annotation_files.append(project_annotations_file_desc)
 
                 annotation_metafile = prepare_annotation_metafile(
                     jobs=jobs, job_annotations=job_annotations
                 )
                 annotation_files.extend(job_annotations.values())
-                postprocess_annotations(annotation_files, manifest=manifest)
+                postprocess_annotations(
+                    annotation_files,
+                    project_annotations_file_desc,
+                    manifest=manifest,
+                    project_images=cvat_service.get_project_images(
+                        session, project.cvat_id
+                    ),
+                )
 
                 annotation_files.append(annotation_metafile)
 

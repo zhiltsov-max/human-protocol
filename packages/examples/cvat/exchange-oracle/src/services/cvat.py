@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import ColumnExpressionArgument, delete, update
+from sqlalchemy import ColumnExpressionArgument, delete, insert, update
 from sqlalchemy.sql import select
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,7 @@ from typing import List, Optional
 
 
 from src.core.types import AssignmentStatus, ProjectStatuses, TaskStatus, JobStatuses
-from src.models.cvat import Assignment, DataUpload, Project, Task, Job, User
+from src.models.cvat import Assignment, DataUpload, Image, Project, Task, Job, User
 from src.utils.time import utcnow
 
 
@@ -421,3 +421,20 @@ def get_user_assignments_in_cvat_projects(
         )
         .all()
     )
+
+
+# Image
+def add_project_images(
+    session: Session, cvat_project_id: int, filenames: List[str]
+) -> None:
+    session.execute(
+        insert(Image),
+        [
+            dict(id=str(uuid.uuid4()), cvat_project_id=cvat_project_id, filename=fn)
+            for fn in filenames
+        ],
+    )
+
+
+def get_project_images(session: Session, cvat_project_id: int) -> List[Image]:
+    return session.query(Image).where(Image.cvat_project_id == cvat_project_id).all()

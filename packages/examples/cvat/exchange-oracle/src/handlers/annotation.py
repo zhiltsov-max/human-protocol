@@ -3,7 +3,7 @@ import io
 import os
 from defusedxml import ElementTree as ET
 from tempfile import TemporaryDirectory
-from typing import List, Dict
+from typing import List, Dict, Sequence
 import zipfile
 
 from attrs import define
@@ -14,13 +14,19 @@ from src.core.annotation_meta import ANNOTATION_METAFILE_NAME, AnnotationMeta, J
 from src.core.manifest import TaskManifest
 from src.core.types import TaskType
 from src.cvat.tasks import DM_DATASET_FORMAT_MAPPING
-from src.models.cvat import Job
+from src.models.cvat import Job, Image
+from src.utils.zip_archive import extract_zip_archive, write_dir_to_zip_archive
 
 
 CVAT_EXPORT_FORMAT_MAPPING = {
     TaskType.image_label_binary: "CVAT for images 1.1",
     TaskType.image_points: "CVAT for images 1.1",
     TaskType.image_boxes: "COCO 1.0",
+}
+
+CVAT_EXPORT_FORMAT_TO_DM_MAPPING = {
+    "CVAT for images 1.1": "cvat",
+    "COCO 1.0": "coco_instances",
 }
 
 
@@ -142,7 +148,31 @@ def convert_point_arrays_dataset_to_1_point_skeletons(
     return converted_dataset
 
 
-def postprocess_annotations(annotations: List[FileDescriptor], manifest: TaskManifest):
+def remove_duplicated_gt_frames(dataset: dm.Dataset, known_frames: Sequence[str]):
+    """
+    Removes unknown images from the dataset inplace.
+
+    On project dataset export, CVAT will add GT frames, which repeat in multiple tasks,
+    with a suffix. We don't need these frames in the resulting dataset,
+    and we can safely remove them.
+    """
+    if not isinstance(known_frames, set):
+        known_frames = set(known_frames)
+
+    for sample in list(dataset):
+        item_image_filename = sample.media.path
+
+        if item_image_filename not in known_frames:
+            dataset.remove(sample.id, sample.subset)
+
+
+def postprocess_annotations(
+    annotations: List[FileDescriptor],
+    merged_annotation: FileDescriptor,
+    *,
+    manifest: TaskManifest,
+    project_images: List[Image],
+) -> None:
     """
     Processes annotations and updates the files list inplace
     """
@@ -155,7 +185,9 @@ def postprocess_annotations(annotations: List[FileDescriptor], manifest: TaskMan
     # We need to convert point arrays, which cannot be represented in COCO directly,
     # into the 1-point skeletons, compatible with COCO person keypoints, which is the
     # required output format
-    input_format = "cvat"
+    input_format = CVAT_EXPORT_FORMAT_TO_DM_MAPPING[
+        CVAT_EXPORT_FORMAT_MAPPING[task_type]
+    ]
     resulting_format = DM_DATASET_FORMAT_MAPPING[task_type]
 
     with TemporaryDirectory() as tempdir:
@@ -176,6 +208,12 @@ def postprocess_annotations(annotations: List[FileDescriptor], manifest: TaskMan
                 dataset, labels=[label.name for label in manifest.annotation.labels]
             )
 
+            if ann_descriptor.filename == merged_annotation.filename:
+                remove_duplicated_gt_frames(
+                    converted_dataset,
+                    known_frames=[image.filename for image in project_images],
+                )
+
             export_dir = os.path.join(
                 tempdir,
                 os.path.splitext(os.path.basename(ann_descriptor.filename))[0]
@@ -188,16 +226,3 @@ def postprocess_annotations(annotations: List[FileDescriptor], manifest: TaskMan
             converted_dataset_archive.seek(0)
 
             ann_descriptor.file = converted_dataset_archive
-
-
-def extract_zip_archive(src_file: io.RawIOBase, extract_dir: str):
-    os.makedirs(extract_dir, exist_ok=True)
-
-    with zipfile.ZipFile(src_file) as zip_file:
-        zip_file.extractall(extract_dir)
-
-
-def write_dir_to_zip_archive(src_dir: str, dst_file: io.RawIOBase):
-    with zipfile.ZipFile(dst_file, "w") as archive_zip_file:
-        for fn in glob(os.path.join(src_dir, "**/*.*"), recursive=True):
-            archive_zip_file.write(fn, os.path.relpath(fn, src_dir))
