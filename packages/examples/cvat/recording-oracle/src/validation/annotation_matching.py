@@ -1,7 +1,6 @@
 import itertools
 from typing import (
     Callable,
-    Dict,
     List,
     NamedTuple,
     Sequence,
@@ -55,7 +54,7 @@ def bbox_iou(a_bbox: Bbox, b_bbox: Bbox) -> float:
     return intersection / union
 
 
-def point_to_bbox_cmp(bbox: Bbox, point: Point, *, rel_sigma: float = 0.5) -> float:
+def point_to_bbox_cmp(bbox: Bbox, point: Point, *, rel_sigma: float = 0.8) -> float:
     """
     Checks that the point is within the axis-aligned bbox,
     then measures the distance to the bbox center.
