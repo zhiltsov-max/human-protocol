@@ -130,6 +130,10 @@ class FeaturesConfig:
     )
     "Allows using a custom host in manifest bucket urls"
 
+    default_point_validity_relative_radius = float(
+        os.environ.get("DEFAULT_POINT_VALIDITY_RELATIVE_RADIUS", 0.8)
+    )
+
 
 class Config:
     port = int(os.environ.get("PORT", 8000))

@@ -12,6 +12,8 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.stats import gmean
 
+from src.core.config import Config
+
 
 Annotation = TypeVar("Annotation")
 
@@ -54,7 +56,12 @@ def bbox_iou(a_bbox: Bbox, b_bbox: Bbox) -> float:
     return intersection / union
 
 
-def point_to_bbox_cmp(bbox: Bbox, point: Point, *, rel_sigma: float = 0.8) -> float:
+def point_to_bbox_cmp(
+    bbox: Bbox,
+    point: Point,
+    *,
+    rel_sigma: float = Config.features.default_point_validity_relative_radius
+) -> float:
     """
     Checks that the point is within the axis-aligned bbox,
     then measures the distance to the bbox center.
