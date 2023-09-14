@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    container_name: exchange-oracle-postgres
+    container_name: oracle-postgres
     image: postgres:14.4
     restart: on-failure
     environment:
@@ -73,6 +73,10 @@ services:
       /usr/bin/mc anonymous set public myminio/results;
       /usr/bin/mc mb myminio/datasets;
       /usr/bin/mc anonymous set public myminio/datasets;
+      /usr/bin/mc mb myminio/launcher;
+      /usr/bin/mc anonymous set public myminio/launcher;
+      /usr/bin/mc mb myminio/solution;
+      /usr/bin/mc anonymous set public myminio/solution;
       "
     networks:
       - test-network
