@@ -172,7 +172,7 @@ def process_outgoing_recording_oracle_webhooks():
                         timestamp=webhook.created_at,
                     )
 
-                    serialized_data, signature = prepare_signed_message(
+                    _, signature = prepare_signed_message(
                         webhook.escrow_address,
                         webhook.chain_id,
                         body=body,
@@ -183,9 +183,7 @@ def process_outgoing_recording_oracle_webhooks():
                         webhook.chain_id, webhook.escrow_address
                     )
                     with httpx.Client() as client:
-                        response = client.post(
-                            webhook_url, headers=headers, data=serialized_data
-                        )
+                        response = client.post(webhook_url, headers=headers, json=body)
                         response.raise_for_status()
 
                     oracle_db_service.outbox.handle_webhook_success(session, webhook.id)

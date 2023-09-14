@@ -61,7 +61,6 @@ def sign_message(chain_id: Networks, message) -> str:
         case _:
             raise ValueError(f"{chain_id} is not in available list of networks.")
 
-    # TODO: add timestamp use
     serialized_message = serialize_message(message)
     signed_message = w3.eth.account.sign_message(
         encode_defunct(text=serialized_message), private_key
