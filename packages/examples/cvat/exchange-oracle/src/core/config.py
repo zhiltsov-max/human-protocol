@@ -134,6 +134,9 @@ class FeaturesConfig:
     )
     "Allows using a custom host in manifest bucket urls"
 
+    default_export_timeout = int(os.environ.get("DEFAULT_EXPORT_TIMEOUT", 60))
+    "Timeout, in seconds, for annotations or dataset export waiting"
+
 
 class CoreConfig:
     default_assignment_time = int(os.environ.get("DEFAULT_ASSIGNMENT_TIME", 300))

@@ -241,6 +241,15 @@ def retrieve_annotations() -> None:
                 annotation_format = CVAT_EXPORT_FORMAT_MAPPING[project.job_type]
                 job_annotations: Dict[int, FileDescriptor] = {}
 
+                # Request dataset preparation beforehand
+                for job in jobs:
+                    cvat_api.request_job_annotations(
+                        job.cvat_id, format_name=annotation_format
+                    )
+                cvat_api.request_project_annotations(
+                    project.cvat_id, format_name=annotation_format
+                )
+
                 # Collect raw annotations from CVAT, validate and convert them
                 # into a recording oracle suitable format
                 for job in jobs:
