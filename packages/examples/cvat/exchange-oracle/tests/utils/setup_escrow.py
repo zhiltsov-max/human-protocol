@@ -4,21 +4,12 @@ from human_protocol_sdk.constants import NETWORKS, ChainId
 from human_protocol_sdk.escrow import EscrowClient, EscrowConfig
 from human_protocol_sdk.staking import StakingClient
 from web3 import Web3
-from human_protocol_sdk.constants import NETWORKS, ChainId
-from tests.utils.constants import (
-    RECORDING_ORACLE_ADDRESS,
-    REPUTATION_ORACLE_ADDRESS,
-    EXCHANGE_ORACLE_ADDRESS,
-    RECORDING_ORACLE_FEE,
-    REPUTATION_ORACLE_FEE,
-    EXCHANGE_ORACLE_FEE,
-    DEFAULT_URL,
-    DEFAULT_HASH,
-)
 
 from tests.utils.constants import (
     DEFAULT_HASH,
     DEFAULT_URL,
+    EXCHANGE_ORACLE_ADDRESS,
+    EXCHANGE_ORACLE_FEE,
     RECORDING_ORACLE_ADDRESS,
     RECORDING_ORACLE_FEE,
     REPUTATION_ORACLE_ADDRESS,
