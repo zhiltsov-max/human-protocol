@@ -77,6 +77,6 @@ def recover_signer(chain_id: Networks, message, signature: str) -> str:
 
 
 def validate_address(escrow_address: str) -> str:
-    if not Web3.isAddress(escrow_address):
+    if not Web3.is_address(escrow_address):
         raise ValueError(f"{escrow_address} is not a correct Web3 address")
-    return Web3.toChecksumAddress(escrow_address)
+    return Web3.to_checksum_address(escrow_address)
