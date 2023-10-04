@@ -1,4 +1,5 @@
 import { ChainId } from '@human-protocol/sdk';
+import { JobRequestType, JobStatus } from '../enums/job';
 
 export const NS = 'hmt';
 export const COINGECKO_API_URL =
@@ -22,3 +23,7 @@ export const SENDGRID_API_KEY_REGEX =
   /^SG\.[A-Za-z0-9-_]{22}\.[A-Za-z0-9-_]{43}$/;
 
 export const HEADER_SIGNATURE_KEY = 'human-signature';
+
+export const CVAT_JOB_TYPES = [JobRequestType.IMAGE_BOXES, JobRequestType.IMAGE_POINTS]
+
+export const CANCEL_JOB_STATUSES = [JobStatus.PENDING, JobStatus.PAID, JobStatus.LAUNCHED]

@@ -16,9 +16,20 @@ export type EscrowData = {
   recordingOracleFee?: string;
   reputationOracle?: string;
   reputationOracleFee?: string;
+  exchangeOracle?: string;
+  exchangeOracleFee?: string;
   status: string;
   token: string;
   totalFundedAmount: string;
+  createdAt: string;
+  chainId: number;
+};
+
+export type PayoutData = {
+  id: string;
+  escrowAddress: string;
+  recipient: string;
+  amount: string;
   createdAt: string;
 };
 
@@ -129,4 +140,21 @@ export type HMTStatistics = {
   totalHolders: number;
   holders: HMTHolder[];
   dailyHMTData: DailyHMTData[];
+};
+
+export type IMDataEntity = {
+  served: number;
+  solved: number;
+};
+
+export type IMData = Record<string, IMDataEntity>;
+
+export type DailyTaskData = {
+  timestamp: Date;
+  tasksTotal: number;
+  tasksSolved: number;
+};
+
+export type TaskStatistics = {
+  dailyTasksData: DailyTaskData[];
 };
