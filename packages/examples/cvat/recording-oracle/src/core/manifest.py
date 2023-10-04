@@ -1,9 +1,10 @@
 from decimal import Decimal
 from typing import Optional
+
 from pydantic import AnyUrl, BaseModel, Field, root_validator
 
-from src.core.types import TaskType
 from src.core.config import Config
+from src.core.types import TaskType
 
 
 class DataInfo(BaseModel):

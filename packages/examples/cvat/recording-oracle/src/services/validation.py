@@ -1,12 +1,12 @@
 import datetime
-from enum import Enum
 import uuid
-from attrs import define
-
-from sqlalchemy import update, case
-from sqlalchemy.sql import select
-from sqlalchemy.orm import Session
+from enum import Enum
 from typing import List, Optional
+
+from attrs import define
+from sqlalchemy import case, update
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 from src.core.types import Networks
 from src.models.validation import Job, Task, ValidationResult
@@ -29,9 +29,7 @@ def get_task_by_id(session: Session, task_id: str) -> Optional[Task]:
     return session.query(Task).where(Task.id == task_id).first()
 
 
-def get_task_validation_results(
-    session: Session, task_id: str
-) -> List[ValidationResult]:
+def get_task_validation_results(session: Session, task_id: str) -> List[ValidationResult]:
     return (
         session.query(ValidationResult)
         .where(ValidationResult.job.has(Job.task_id == task_id))

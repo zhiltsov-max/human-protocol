@@ -1,14 +1,7 @@
-from fastapi import FastAPI
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import FastAPI
 
 from src.core.config import Config
-from src.crons.state_trackers import (
-    track_completed_projects,
-    track_completed_tasks,
-    track_task_creation,
-    track_assignments,
-    retrieve_annotations,
-)
 from src.crons.process_job_launcher_webhooks import (
     process_incoming_job_launcher_webhooks,
     process_outgoing_job_launcher_webhooks,
@@ -16,6 +9,13 @@ from src.crons.process_job_launcher_webhooks import (
 from src.crons.process_recording_oracle_webhooks import (
     process_incoming_recording_oracle_webhooks,
     process_outgoing_recording_oracle_webhooks,
+)
+from src.crons.state_trackers import (
+    retrieve_annotations,
+    track_assignments,
+    track_completed_projects,
+    track_completed_tasks,
+    track_task_creation,
 )
 
 

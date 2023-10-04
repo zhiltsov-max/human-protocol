@@ -5,9 +5,9 @@ Revises:
 Create Date: 2023-09-05 15:02:51.779529
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "ca93dce1a618"
@@ -62,9 +62,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_webhooks_id"), "webhooks", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_webhooks_signature"), "webhooks", ["signature"], unique=True
-    )
+    op.create_index(op.f("ix_webhooks_signature"), "webhooks", ["signature"], unique=True)
     op.create_table(
         "jobs",
         sa.Column("id", sa.String(), nullable=False),
@@ -86,9 +84,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("assignment_id"),
     )
-    op.create_index(
-        op.f("ix_validation_results_id"), "validation_results", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_validation_results_id"), "validation_results", ["id"], unique=False)
     # ### end Alembic commands ###
 
 

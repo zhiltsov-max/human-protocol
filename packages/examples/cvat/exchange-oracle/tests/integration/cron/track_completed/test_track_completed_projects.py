@@ -2,10 +2,10 @@ import unittest
 import uuid
 
 from sqlalchemy.sql import select
-from src.core.types import Networks
-from src.db import SessionLocal
-from src.core.types import TaskType, ProjectStatuses, TaskStatus
+
+from src.core.types import Networks, ProjectStatuses, TaskStatus, TaskType
 from src.crons.state_trackers import track_completed_projects
+from src.db import SessionLocal
 from src.models.cvat import Project, Task
 
 
@@ -43,9 +43,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         track_completed_projects()
 
         updated_project = (
-            self.session.execute(select(Project).where(Project.id == project_id))
-            .scalars()
-            .first()
+            self.session.execute(select(Project).where(Project.id == project_id)).scalars().first()
         )
 
         self.assertEqual(updated_project.status, ProjectStatuses.completed.value)
@@ -84,9 +82,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         track_completed_projects()
 
         updated_project = (
-            self.session.execute(select(Project).where(Project.id == project_id))
-            .scalars()
-            .first()
+            self.session.execute(select(Project).where(Project.id == project_id)).scalars().first()
         )
 
         self.assertEqual(updated_project.status, ProjectStatuses.annotation.value)

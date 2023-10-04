@@ -1,20 +1,15 @@
 from http import HTTPStatus
-from fastapi import APIRouter, HTTPException, Header, Path, Query
 from typing import Optional
 
 import sqlalchemy.exc
-from src.db import SessionLocal
+from fastapi import APIRouter, Header, HTTPException, Path, Query
 
 import src.cvat.api_calls as cvat_api
-from src.schemas.exchange import (
-    AssignmentRequest,
-    TaskResponse,
-    UserRequest,
-    UserResponse,
-)
-import src.services.exchange as oracle_service
-from src.validators.signature import validate_human_app_signature
 import src.services.cvat as cvat_service
+import src.services.exchange as oracle_service
+from src.db import SessionLocal
+from src.schemas.exchange import AssignmentRequest, TaskResponse, UserRequest, UserResponse
+from src.validators.signature import validate_human_app_signature
 
 router = APIRouter()
 
@@ -95,7 +90,8 @@ async def create_assignment(
 
     if not assignment_id:
         raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="No assignments available"
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail="No assignments available",
         )
 
     return oracle_service.serialize_task(project_id, assignment_id=assignment_id)

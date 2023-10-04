@@ -1,12 +1,8 @@
 from typing import Optional, Type, Union
+
 from pydantic import BaseModel
 
-from src.core.types import (
-    ExchangeOracleEventType,
-    OracleWebhookTypes,
-    RecordingOracleEventType,
-)
-
+from src.core.types import ExchangeOracleEventType, OracleWebhookTypes, RecordingOracleEventType
 
 EventTypeTag = Union[
     ExchangeOracleEventType,

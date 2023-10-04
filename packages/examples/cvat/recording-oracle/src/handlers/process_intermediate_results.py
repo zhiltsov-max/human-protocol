@@ -1,22 +1,20 @@
+import io
 import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Type, Union
-from attrs import define
-import io
-import numpy as np
-
-from sqlalchemy.orm import Session
 
 import datumaro as dm
+import numpy as np
+from attrs import define
+from sqlalchemy.orm import Session
 
+import src.services.validation as db_service
 from src.core.annotation_meta import AnnotationMeta
 from src.core.manifest import TaskManifest
-
-from src.core.types import TaskType, TaskType
+from src.core.types import TaskType
 from src.core.validation_meta import JobMeta, ResultMeta, ValidationMeta
-import src.services.validation as db_service
 from src.utils.zip_archive import extract_zip_archive, write_dir_to_zip_archive
 from src.validation.dataset_comparison import (
     BboxDatasetComparator,
@@ -93,9 +91,7 @@ def process_intermediate_results(
             job_dataset_path = tempdir / str(job_cvat_id)
             extract_zip_archive(job_annotations_file, job_dataset_path)
 
-            job_dataset = dm.Dataset.import_from(
-                os.fspath(job_dataset_path), format=dataset_format
-            )
+            job_dataset = dm.Dataset.import_from(os.fspath(job_dataset_path), format=dataset_format)
 
             job_mean_accuracy = comparator.compare(gt_dataset, job_dataset)
             job_results[job_cvat_id] = job_mean_accuracy
@@ -113,14 +109,10 @@ def process_intermediate_results(
         put_gt_into_merged_dataset(gt_dataset, merged_dataset, manifest=manifest)
 
         updated_merged_dataset_path = tempdir / str("merged_updated")
-        merged_dataset.export(
-            updated_merged_dataset_path, merged_dataset_format, save_media=False
-        )
+        merged_dataset.export(updated_merged_dataset_path, merged_dataset_format, save_media=False)
 
         updated_merged_dataset_archive = io.BytesIO()
-        write_dir_to_zip_archive(
-            updated_merged_dataset_path, updated_merged_dataset_archive
-        )
+        write_dir_to_zip_archive(updated_merged_dataset_path, updated_merged_dataset_archive)
         updated_merged_dataset_archive.seek(0)
 
     if logger.isEnabledFor(logging.DEBUG):
@@ -132,18 +124,14 @@ def process_intermediate_results(
 
     task = db_service.get_task_by_escrow_address(session, escrow_address)
     if not task:
-        task_id = db_service.create_task(
-            session, escrow_address=escrow_address, chain_id=chain_id
-        )
+        task_id = db_service.create_task(session, escrow_address=escrow_address, chain_id=chain_id)
         task = db_service.get_task_by_id(session, task_id)
 
     job_final_result_ids: Dict[int, str] = {}
     for job_meta in meta.jobs:
         job = db_service.get_job_by_cvat_id(session, job_meta.job_id)
         if not job:
-            job_id = db_service.create_job(
-                session, task_id=task.id, job_cvat_id=job_meta.job_id
-            )
+            job_id = db_service.create_job(session, task_id=task.id, job_cvat_id=job_meta.job_id)
             job = db_service.get_job_by_id(session, job_id)
 
         validation_result = db_service.get_validation_result_by_assignment_id(
@@ -170,17 +158,13 @@ def process_intermediate_results(
 
     job_id_to_meta_id = {job.id: i for i, job in enumerate(task_jobs)}
 
-    validation_result_id_to_meta_id = {
-        r.id: i for i, r in enumerate(task_validation_results)
-    }
+    validation_result_id_to_meta_id = {r.id: i for i, r in enumerate(task_validation_results)}
 
     validation_meta = ValidationMeta(
         jobs=[
             JobMeta(
                 job_id=job_id_to_meta_id[job.id],
-                final_result_id=validation_result_id_to_meta_id[
-                    job_final_result_ids[job.id]
-                ],
+                final_result_id=validation_result_id_to_meta_id[job_final_result_ids[job.id]],
             )
             for job in task_jobs
         ],

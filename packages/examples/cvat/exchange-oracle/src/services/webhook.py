@@ -1,21 +1,17 @@
 import datetime
-from enum import Enum
 import uuid
-from attrs import define
-
-from sqlalchemy import update, case
-from sqlalchemy.sql import select
-from sqlalchemy.orm import Session
+from enum import Enum
 from typing import List, Optional
 
-from src.core.oracle_events import OracleEvent, validate_event
-from src.core.types import (
-    OracleWebhookTypes,
-    OracleWebhookStatuses,
-)
-from src.models.webhook import Webhook
+from attrs import define
+from sqlalchemy import case, update
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
 from src.core.config import Config
+from src.core.oracle_events import OracleEvent, validate_event
+from src.core.types import OracleWebhookStatuses, OracleWebhookTypes
+from src.models.webhook import Webhook
 from src.utils.enums import BetterEnumMeta
 
 
@@ -62,14 +58,10 @@ class OracleWebhookQueue:
         if self.direction == OracleWebhookDirectionTag.incoming and not signature:
             raise ValueError("Webhook signature must be specified for incoming events")
         elif self.direction == OracleWebhookDirectionTag.outgoing and signature:
-            raise ValueError(
-                "Webhook signature must not be specified for outgoing events"
-            )
+            raise ValueError("Webhook signature must not be specified for outgoing events")
 
         if signature:
-            existing_webhook_query = select(Webhook).where(
-                Webhook.signature == signature
-            )
+            existing_webhook_query = select(Webhook).where(Webhook.signature == signature)
             existing_webhook = session.execute(existing_webhook_query).scalars().first()
         else:
             existing_webhook = None
@@ -111,9 +103,7 @@ class OracleWebhookQueue:
     def update_webhook_status(
         self, session: Session, webhook_id: str, status: OracleWebhookStatuses
     ) -> None:
-        upd = (
-            update(Webhook).where(Webhook.id == webhook_id).values(status=status.value)
-        )
+        upd = update(Webhook).where(Webhook.id == webhook_id).values(status=status.value)
         session.execute(upd)
 
     def handle_webhook_success(self, session: Session, webhook_id: str) -> None:
@@ -121,7 +111,8 @@ class OracleWebhookQueue:
             update(Webhook)
             .where(Webhook.id == webhook_id)
             .values(
-                attempts=Webhook.attempts + 1, status=OracleWebhookStatuses.completed
+                attempts=Webhook.attempts + 1,
+                status=OracleWebhookStatuses.completed,
             )
         )
         session.execute(upd)

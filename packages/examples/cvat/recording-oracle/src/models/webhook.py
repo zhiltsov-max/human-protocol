@@ -1,13 +1,9 @@
 # pylint: disable=too-few-public-methods
-from sqlalchemy import JSON, Column, String, DateTime, Enum, Integer
+from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String
 from sqlalchemy.sql import func
 
-from src.core.types import (
-    OracleWebhookTypes,
-    OracleWebhookStatuses,
-)
+from src.core.types import Networks, OracleWebhookStatuses, OracleWebhookTypes
 from src.db import Base
-from src.core.types import Networks
 
 
 class Webhook(Base):

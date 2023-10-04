@@ -1,6 +1,6 @@
-from src.core.manifest import TaskManifest
-
 from hashlib import sha256
+
+from src.core.manifest import TaskManifest
 
 
 def parse_manifest(manifest: dict) -> TaskManifest:

@@ -1,36 +1,28 @@
 from typing import Dict, List
-from src.chain.escrow import get_escrow_manifest, validate_escrow
 
+import src.cvat.api_calls as cvat_api
+import src.models.cvat as cvat_models
+import src.services.cloud.client as cloud_client
+import src.services.cvat as cvat_service
+import src.services.webhook as oracle_db_service
+from src.chain.escrow import get_escrow_manifest, validate_escrow
+from src.core.annotation_meta import RESULTING_ANNOTATIONS_FILE
+from src.core.config import CronConfig, StorageConfig
 from src.core.oracle_events import (
     ExchangeOracleEvent_TaskCreationFailed,
     ExchangeOracleEvent_TaskFinished,
 )
-
+from src.core.types import JobStatuses, OracleWebhookTypes, ProjectStatuses, TaskStatus
 from src.db import SessionLocal
-from src.core.config import CronConfig, StorageConfig
-
-from src.core.annotation_meta import RESULTING_ANNOTATIONS_FILE
-from src.core.types import (
-    OracleWebhookTypes,
-    ProjectStatuses,
-    TaskStatus,
-    JobStatuses,
-)
 from src.handlers.annotation import (
+    CVAT_EXPORT_FORMAT_MAPPING,
+    FileDescriptor,
     postprocess_annotations,
     prepare_annotation_metafile,
-    FileDescriptor,
-    CVAT_EXPORT_FORMAT_MAPPING,
 )
 from src.log import ROOT_LOGGER_NAME
-import src.models.cvat as cvat_models
-import src.services.cvat as cvat_service
-import src.services.webhook as oracle_db_service
-import src.services.cloud.client as cloud_client
-import src.cvat.api_calls as cvat_api
 from src.utils.assignments import compose_output_annotation_filename, parse_manifest
 from src.utils.logging import get_function_logger
-
 
 module_logger = f"{ROOT_LOGGER_NAME}.cron.cvat"
 
@@ -57,12 +49,8 @@ def track_completed_projects() -> None:
             completed_project_ids = []
 
             for project in projects:
-                tasks = cvat_service.get_tasks_by_cvat_project_id(
-                    session, project.cvat_id
-                )
-                if len(tasks) > 0 and all(
-                    task.status == TaskStatus.completed for task in tasks
-                ):
+                tasks = cvat_service.get_tasks_by_cvat_project_id(session, project.cvat_id)
+                if len(tasks) > 0 and all(task.status == TaskStatus.completed for task in tasks):
                     cvat_service.update_project_status(
                         session, project.id, ProjectStatuses.completed
                     )
@@ -102,12 +90,8 @@ def track_completed_tasks() -> None:
 
             for task in tasks:
                 jobs = cvat_service.get_jobs_by_cvat_task_id(session, task.cvat_id)
-                if len(jobs) > 0 and all(
-                    job.status == JobStatuses.completed for job in jobs
-                ):
-                    cvat_service.update_task_status(
-                        session, task.id, TaskStatus.completed
-                    )
+                if len(jobs) > 0 and all(job.status == JobStatuses.completed for job in jobs):
+                    cvat_service.update_task_status(session, task.id, TaskStatus.completed)
 
                     completed_task_ids.append(task.cvat_id)
 
@@ -177,10 +161,8 @@ def track_assignments() -> None:
                         )
                     )
 
-                    latest_assignment = (
-                        cvat_service.get_latest_assignment_by_cvat_job_id(
-                            session, assignment.cvat_job_id
-                        )
+                    latest_assignment = cvat_service.get_latest_assignment_by_cvat_job_id(
+                        session, assignment.cvat_job_id
                     )
                     if latest_assignment.id == assignment.id:
                         # Avoid un-assigning if it's not the latest assignment
@@ -234,21 +216,15 @@ def retrieve_annotations() -> None:
                     f"Downloading results for the project (escrow_address={project.escrow_address})"
                 )
 
-                jobs = cvat_service.get_jobs_by_cvat_project_id(
-                    session, project.cvat_id
-                )
+                jobs = cvat_service.get_jobs_by_cvat_project_id(session, project.cvat_id)
 
                 annotation_format = CVAT_EXPORT_FORMAT_MAPPING[project.job_type]
                 job_annotations: Dict[int, FileDescriptor] = {}
 
                 # Request dataset preparation beforehand
                 for job in jobs:
-                    cvat_api.request_job_annotations(
-                        job.cvat_id, format_name=annotation_format
-                    )
-                cvat_api.request_project_annotations(
-                    project.cvat_id, format_name=annotation_format
-                )
+                    cvat_api.request_job_annotations(job.cvat_id, format_name=annotation_format)
+                cvat_api.request_project_annotations(project.cvat_id, format_name=annotation_format)
 
                 # Collect raw annotations from CVAT, validate and convert them
                 # into a recording oracle suitable format
@@ -287,9 +263,7 @@ def retrieve_annotations() -> None:
                     annotation_files,
                     project_annotations_file_desc,
                     manifest=manifest,
-                    project_images=cvat_service.get_project_images(
-                        session, project.cvat_id
-                    ),
+                    project_images=cvat_service.get_project_images(session, project.cvat_id),
                 )
 
                 annotation_files.append(annotation_metafile)
@@ -332,9 +306,7 @@ def retrieve_annotations() -> None:
                     event=ExchangeOracleEvent_TaskFinished(),
                 )
 
-                cvat_service.update_project_status(
-                    session, project.id, ProjectStatuses.validation
-                )
+                cvat_service.update_project_status(session, project.id, ProjectStatuses.validation)
 
                 logger.info(
                     f"The project (escrow_address={project.escrow_address}) "

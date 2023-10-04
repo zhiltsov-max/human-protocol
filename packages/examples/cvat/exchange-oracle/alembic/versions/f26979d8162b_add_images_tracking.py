@@ -5,10 +5,10 @@ Revises: 9a7dfe7494c2
 Create Date: 2023-09-13 16:55:27.251825
 
 """
-from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "f26979d8162b"
@@ -24,9 +24,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("cvat_project_id", sa.Integer(), nullable=False),
         sa.Column("filename", sa.String(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["cvat_project_id"], ["projects.cvat_id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["cvat_project_id"], ["projects.cvat_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("cvat_project_id", "filename", name="_project_filename_uc"),
     )

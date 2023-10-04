@@ -1,8 +1,8 @@
-from glob import glob
 import io
 import os
-from pathlib import Path
 import zipfile
+from glob import glob
+from pathlib import Path
 
 
 def extract_zip_archive(data: io.RawIOBase, dst_dir: Path, *, create_dir: bool = True):

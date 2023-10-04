@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, validator
-from src.chain.web3 import validate_address
-from src.core.types import Networks
 
-from src.core.types import ExchangeOracleEventType
+from pydantic import BaseModel, validator
+
+from src.chain.web3 import validate_address
+from src.core.types import ExchangeOracleEventType, Networks
 
 
 class OracleWebhook(BaseModel):

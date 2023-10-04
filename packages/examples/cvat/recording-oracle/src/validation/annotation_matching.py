@@ -1,19 +1,11 @@
 import itertools
-from typing import (
-    Callable,
-    List,
-    NamedTuple,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
-import numpy as np
+from typing import Callable, List, NamedTuple, Sequence, Tuple, TypeVar
 
+import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.stats import gmean
 
 from src.core.config import Config
-
 
 Annotation = TypeVar("Annotation")
 
@@ -60,7 +52,7 @@ def point_to_bbox_cmp(
     bbox: Bbox,
     point: Point,
     *,
-    rel_sigma: float = Config.features.default_point_validity_relative_radius
+    rel_sigma: float = Config.features.default_point_validity_relative_radius,
 ) -> float:
     """
     Checks that the point is within the axis-aligned bbox,
@@ -74,10 +66,7 @@ def point_to_bbox_cmp(
     """
     # bbox filter + 2d Gaussian + geomean
 
-    if not (
-        (bbox.x <= point.x <= bbox.x + bbox.w)
-        and (bbox.y <= point.y <= bbox.y + bbox.h)
-    ):
+    if not ((bbox.x <= point.x <= bbox.x + bbox.w) and (bbox.y <= point.y <= bbox.y + bbox.h)):
         return 0
 
     bbox_cx = bbox.x + bbox.w / 2
@@ -99,8 +88,7 @@ def match_annotations(
     b_anns: Sequence[Annotation],
     similarity: Callable[[Annotation, Annotation], float] = bbox_iou,
     min_similarity: float = 1.0,
-    label_matcher: Callable[[Annotation, Annotation], bool] = lambda a, b: a.label
-    == b.label,
+    label_matcher: Callable[[Annotation, Annotation], bool] = lambda a, b: a.label == b.label,
 ) -> MatchResult:
     assert callable(similarity), similarity
     assert callable(label_matcher), label_matcher
@@ -110,13 +98,9 @@ def match_annotations(
         [
             [
                 1 - similarity(a, b) if a is not None and b is not None else 1
-                for b, _ in itertools.zip_longest(
-                    b_anns, range(max_ann_count), fillvalue=None
-                )
+                for b, _ in itertools.zip_longest(b_anns, range(max_ann_count), fillvalue=None)
             ]
-            for a, _ in itertools.zip_longest(
-                a_anns, range(max_ann_count), fillvalue=None
-            )
+            for a, _ in itertools.zip_longest(a_anns, range(max_ann_count), fillvalue=None)
         ]
     )
     distances[distances > 1 - min_similarity] = 1

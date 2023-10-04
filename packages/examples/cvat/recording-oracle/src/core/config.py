@@ -1,6 +1,7 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """ Project configuration from env vars """
 import os
+
 from dotenv import load_dotenv
 
 from src.utils.logging import parse_log_level
@@ -48,9 +49,7 @@ class LocalhostConfig:
         "LOCALHOST_PRIVATE_KEY",
         "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
     )
-    addr = os.environ.get(
-        "LOCALHOST_MUMBAI_ADDR", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-    )
+    addr = os.environ.get("LOCALHOST_MUMBAI_ADDR", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 
     exchange_oracle_url = os.environ.get("LOCALHOST_EXCHANGE_ORACLE_URL")
     exchange_oracle_address = os.environ.get("LOCALHOST_EXCHANGE_ORACLE_ADDRESS")
@@ -97,15 +96,11 @@ class StorageConfig:
 
 
 class ExchangeOracleStorageConfig:
-    endpoint_url = os.environ.get(
-        "EXCHANGE_ORACLE_STORAGE_ENDPOINT_URL", "storage.googleapis.com"
-    )
+    endpoint_url = os.environ.get("EXCHANGE_ORACLE_STORAGE_ENDPOINT_URL", "storage.googleapis.com")
     region = os.environ.get("EXCHANGE_ORACLE_STORAGE_REGION", "")
     access_key = os.environ.get("EXCHANGE_ORACLE_STORAGE_ACCESS_KEY", "")
     secret_key = os.environ.get("EXCHANGE_ORACLE_STORAGE_SECRET_KEY", "")
-    results_bucket_name = os.environ.get(
-        "EXCHANGE_ORACLE_STORAGE_RESULTS_BUCKET_NAME", ""
-    )
+    results_bucket_name = os.environ.get("EXCHANGE_ORACLE_STORAGE_RESULTS_BUCKET_NAME", "")
     secure = str_to_bool(os.environ.get("EXCHANGE_ORACLE_STORAGE_USE_SSL", "true"))
 
     @classmethod
@@ -125,9 +120,7 @@ class ExchangeOracleStorageConfig:
 
 
 class FeaturesConfig:
-    enable_custom_cloud_host = str_to_bool(
-        os.environ.get("ENABLE_CUSTOM_CLOUD_HOST", "no")
-    )
+    enable_custom_cloud_host = str_to_bool(os.environ.get("ENABLE_CUSTOM_CLOUD_HOST", "no"))
     "Allows using a custom host in manifest bucket urls"
 
     default_point_validity_relative_radius = float(

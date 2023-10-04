@@ -4,14 +4,12 @@ from logging.config import dictConfig
 
 from src.core.config import Config
 
-
 ROOT_LOGGER_NAME = "app"
 
 
 def setup_logging():
     log_level_name = logging.getLevelName(
-        Config.loglevel
-        or (logging.DEBUG if Config.environment == "development" else logging.INFO)
+        Config.loglevel or (logging.DEBUG if Config.environment == "development" else logging.INFO)
     )
 
     log_config = {
@@ -26,7 +24,10 @@ def setup_logging():
             },
         },
         "handlers": {
-            "console": {"formatter": "default", "class": "logging.StreamHandler"},
+            "console": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+            },
         },
         "loggers": {
             ROOT_LOGGER_NAME: {

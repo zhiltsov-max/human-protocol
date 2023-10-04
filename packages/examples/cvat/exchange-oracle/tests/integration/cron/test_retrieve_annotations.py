@@ -2,25 +2,25 @@ import unittest
 import uuid
 from unittest.mock import patch
 
-from sqlalchemy.sql import select
-from src.core.types import Networks
-from src.db import SessionLocal
-from src.crons.retrieve_annotations import retrieve_annotations
-from src.models.webhook import Webhook
-from tests.unit.helpers.predefined_annotations import raw_binary_annotations
-from src.core.types import (
-    ProjectStatuses,
-    TaskType,
-    TaskStatus,
-    JobStatuses,
-)
-from src.models.cvat import Project, Task, Job
-from src.core.types import (
-    OracleWebhookTypes,
-    OracleWebhookStatuses,
-)
 from human_protocol_sdk.storage import StorageClient
+from sqlalchemy.sql import select
+
 from src.core.config import StorageConfig
+from src.core.types import (
+    JobStatuses,
+    Networks,
+    OracleWebhookStatuses,
+    OracleWebhookTypes,
+    ProjectStatuses,
+    TaskStatus,
+    TaskType,
+)
+from src.crons.retrieve_annotations import retrieve_annotations
+from src.db import SessionLocal
+from src.models.cvat import Job, Project, Task
+from src.models.webhook import Webhook
+
+from tests.unit.helpers.predefined_annotations import raw_binary_annotations
 
 
 class ServiceIntegrationTest(unittest.TestCase):
@@ -97,9 +97,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         )
 
         project = (
-            self.session.execute(select(Project).where(Project.id == project_id))
-            .scalars()
-            .first()
+            self.session.execute(select(Project).where(Project.id == project_id)).scalars().first()
         )
 
         self.assertEqual(project.status, ProjectStatuses.recorded.value)
@@ -155,17 +153,13 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertIsNone(webhook)
 
         project = (
-            self.session.execute(select(Project).where(Project.id == project_id))
-            .scalars()
-            .first()
+            self.session.execute(select(Project).where(Project.id == project_id)).scalars().first()
         )
 
         self.assertEqual(project.status, ProjectStatuses.annotation.value)
 
     @patch("src.cvat.api_calls.get_job_annotations")
-    def test_process_recording_oracle_webhooks_error_getting_annotations(
-        self, mock_annotations
-    ):
+    def test_process_recording_oracle_webhooks_error_getting_annotations(self, mock_annotations):
         mock_annotations.side_effect = Exception("Connection error")
         escrow_address = "0x86e83d346041E8806e352681f3F14549C0d2BC67"
 
@@ -218,9 +212,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertIsNone(webhook)
 
         project = (
-            self.session.execute(select(Project).where(Project.id == project_id))
-            .scalars()
-            .first()
+            self.session.execute(select(Project).where(Project.id == project_id)).scalars().first()
         )
 
         self.assertEqual(project.status, ProjectStatuses.completed.value)

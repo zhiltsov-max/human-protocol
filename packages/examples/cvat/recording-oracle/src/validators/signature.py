@@ -1,5 +1,6 @@
 from ast import literal_eval
 from http import HTTPStatus
+
 from fastapi import HTTPException, Request
 
 from src.chain.escrow import get_exchange_oracle_address
@@ -16,9 +17,7 @@ async def validate_oracle_webhook_signature(
 
     signer = recover_signer(webhook.chain_id, message, signature)
 
-    exchange_oracle_address = get_exchange_oracle_address(
-        webhook.chain_id, webhook.escrow_address
-    )
+    exchange_oracle_address = get_exchange_oracle_address(webhook.chain_id, webhook.escrow_address)
     possible_signers = {
         OracleWebhookTypes.exchange_oracle: exchange_oracle_address,
     }

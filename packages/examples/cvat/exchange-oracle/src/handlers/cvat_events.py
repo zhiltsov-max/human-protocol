@@ -1,12 +1,13 @@
 from typing import List
-from dateutil.parser import parse as parse_aware_datetime
-from src.db import SessionLocal
-from src.core.types import AssignmentStatus, CvatEventTypes, JobStatuses
-from src.log import ROOT_LOGGER_NAME
 
+from dateutil.parser import parse as parse_aware_datetime
+
+import src.cvat.api_calls as cvat_api
 import src.models.cvat as models
 import src.services.cvat as cvat_service
-import src.cvat.api_calls as cvat_api
+from src.core.types import AssignmentStatus, CvatEventTypes, JobStatuses
+from src.db import SessionLocal
+from src.log import ROOT_LOGGER_NAME
 from src.utils.logging import get_function_logger
 
 module_logger_name = f"{ROOT_LOGGER_NAME}.cron.handler"

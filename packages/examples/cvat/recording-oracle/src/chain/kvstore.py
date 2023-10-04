@@ -38,9 +38,7 @@ def get_reputation_oracle_url(chain_id: int, escrow_address: str) -> str:
     escrow_client = EscrowClient(web3)
     kvstore_client = KVStoreClient(web3)
 
-    reputation_oracle_address = escrow_client.get_reputation_oracle_address(
-        escrow_address
-    )
+    reputation_oracle_address = escrow_client.get_reputation_oracle_address(escrow_address)
     url = kvstore_client.get(reputation_oracle_address, "webhook_url")
 
     return url

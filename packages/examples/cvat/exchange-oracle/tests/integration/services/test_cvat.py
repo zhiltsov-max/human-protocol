@@ -1,17 +1,12 @@
 import unittest
 import uuid
-from src.db import SessionLocal
 
-from src.core.types import Networks
-from src.core.types import (
-    JobStatuses,
-    TaskStatus,
-    ProjectStatuses,
-    TaskType,
-)
-from src.models.cvat import Project, Job, Task
 from sqlalchemy.exc import IntegrityError
+
 import src.services.cvat as cvat_service
+from src.core.types import JobStatuses, Networks, ProjectStatuses, TaskStatus, TaskType
+from src.db import SessionLocal
+from src.models.cvat import Job, Project, Task
 
 
 def create_project(session: SessionLocal) -> tuple:
@@ -277,9 +272,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             bucket_url,
         )
 
-        project = cvat_service.get_project_by_escrow_address(
-            self.session, escrow_address
-        )
+        project = cvat_service.get_project_by_escrow_address(self.session, escrow_address)
 
         self.assertIsNotNone(project)
         self.assertEqual(project.id, p_id)
@@ -290,9 +283,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         self.assertEqual(project.chain_id, chain_id)
         self.assertEqual(project.bucket_url, bucket_url)
 
-        project = cvat_service.get_project_by_escrow_address(
-            self.session, "invalid escrow address"
-        )
+        project = cvat_service.get_project_by_escrow_address(self.session, "invalid escrow address")
 
         self.assertIsNone(project)
 
@@ -349,9 +340,7 @@ class ServiceIntegrationTest(unittest.TestCase):
 
         assert len(projects) == 3
 
-        cvat_service.update_project_status(
-            self.session, p_id, ProjectStatuses.completed.value
-        )
+        cvat_service.update_project_status(self.session, p_id, ProjectStatuses.completed.value)
 
         projects = cvat_service.get_projects_by_status(
             self.session, ProjectStatuses.annotation.value
@@ -382,9 +371,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             bucket_url,
         )
 
-        cvat_service.update_project_status(
-            self.session, p_id, ProjectStatuses.completed.value
-        )
+        cvat_service.update_project_status(self.session, p_id, ProjectStatuses.completed.value)
 
         project = cvat_service.get_project_by_id(self.session, p_id)
 
@@ -422,9 +409,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         cvat_id = 1
         status = TaskStatus.annotation.value
 
-        task_id = cvat_service.create_task(
-            self.session, cvat_id, cvat_project.cvat_id, status
-        )
+        task_id = cvat_service.create_task(self.session, cvat_id, cvat_project.cvat_id, status)
 
         task = self.session.query(Task).filter_by(id=task_id).first()
 
@@ -488,25 +473,15 @@ class ServiceIntegrationTest(unittest.TestCase):
     def test_get_tasks_by_status(self):
         cvat_project = create_project(self.session)
 
-        cvat_service.create_task(
-            self.session, 1, cvat_project.cvat_id, TaskStatus.annotation.value
-        )
-        cvat_service.create_task(
-            self.session, 2, cvat_project.cvat_id, TaskStatus.annotation.value
-        )
-        cvat_service.create_task(
-            self.session, 3, cvat_project.cvat_id, TaskStatus.completed.value
-        )
+        cvat_service.create_task(self.session, 1, cvat_project.cvat_id, TaskStatus.annotation.value)
+        cvat_service.create_task(self.session, 2, cvat_project.cvat_id, TaskStatus.annotation.value)
+        cvat_service.create_task(self.session, 3, cvat_project.cvat_id, TaskStatus.completed.value)
 
-        tasks = cvat_service.get_tasks_by_status(
-            self.session, TaskStatus.annotation.value
-        )
+        tasks = cvat_service.get_tasks_by_status(self.session, TaskStatus.annotation.value)
 
         assert len(tasks) == 2
 
-        tasks = cvat_service.get_tasks_by_status(
-            self.session, TaskStatus.completed.value
-        )
+        tasks = cvat_service.get_tasks_by_status(self.session, TaskStatus.completed.value)
 
         assert len(tasks) == 1
 
@@ -521,9 +496,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             self.session, 1, cvat_project.cvat_id, TaskStatus.annotation.value
         )
 
-        cvat_service.update_task_status(
-            self.session, task_id, TaskStatus.completed.value
-        )
+        cvat_service.update_task_status(self.session, task_id, TaskStatus.completed.value)
 
         task = cvat_service.get_task_by_id(self.session, task_id)
 
@@ -546,15 +519,9 @@ class ServiceIntegrationTest(unittest.TestCase):
     def test_get_tasks_by_cvat_project_id(self):
         cvat_project = create_project(self.session)
 
-        cvat_service.create_task(
-            self.session, 1, cvat_project.cvat_id, TaskStatus.annotation.value
-        )
-        cvat_service.create_task(
-            self.session, 2, cvat_project.cvat_id, TaskStatus.annotation.value
-        )
-        cvat_service.create_task(
-            self.session, 3, cvat_project.cvat_id, TaskStatus.completed.value
-        )
+        cvat_service.create_task(self.session, 1, cvat_project.cvat_id, TaskStatus.annotation.value)
+        cvat_service.create_task(self.session, 2, cvat_project.cvat_id, TaskStatus.annotation.value)
+        cvat_service.create_task(self.session, 3, cvat_project.cvat_id, TaskStatus.completed.value)
 
         cvat_id = 2
         cvat_cloudstorage_id = 2
@@ -574,9 +541,7 @@ class ServiceIntegrationTest(unittest.TestCase):
 
         cvat_service.create_task(self.session, 4, 2, TaskStatus.annotation.value)
 
-        tasks = cvat_service.get_tasks_by_cvat_project_id(
-            self.session, cvat_project.cvat_id
-        )
+        tasks = cvat_service.get_tasks_by_cvat_project_id(self.session, cvat_project.cvat_id)
 
         assert len(tasks) == 3
 
@@ -916,9 +881,7 @@ class ServiceIntegrationTest(unittest.TestCase):
             status,
         )
 
-        jobs = cvat_service.get_jobs_by_cvat_task_id(
-            self.session, cvat_task_id=cvat_task.cvat_id
-        )
+        jobs = cvat_service.get_jobs_by_cvat_task_id(self.session, cvat_task_id=cvat_task.cvat_id)
 
         assert len(jobs) == 3
 
@@ -944,9 +907,7 @@ class ServiceIntegrationTest(unittest.TestCase):
 
         cvat_project_db = cvat_service.get_project_by_id(self.session, cvat_project.id)
         cvat_task_db = cvat_service.get_task_by_id(self.session, cvat_task.id)
-        jobs = cvat_service.get_jobs_by_cvat_task_id(
-            self.session, cvat_task_id=cvat_task.cvat_id
-        )
+        jobs = cvat_service.get_jobs_by_cvat_task_id(self.session, cvat_task_id=cvat_task.cvat_id)
 
         self.assertIsNotNone(cvat_project)
         self.assertEqual(cvat_project_db.id, cvat_project.id)
@@ -960,9 +921,7 @@ class ServiceIntegrationTest(unittest.TestCase):
 
         cvat_project_db = cvat_service.get_project_by_id(self.session, cvat_project.id)
         cvat_task_db = cvat_service.get_task_by_id(self.session, cvat_task.id)
-        jobs = cvat_service.get_jobs_by_cvat_task_id(
-            self.session, cvat_task_id=cvat_task.cvat_id
-        )
+        jobs = cvat_service.get_jobs_by_cvat_task_id(self.session, cvat_task_id=cvat_task.cvat_id)
 
         self.assertIsNone(cvat_project_db)
         self.assertIsNone(cvat_task_db)

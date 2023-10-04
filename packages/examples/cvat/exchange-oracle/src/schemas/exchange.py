@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Optional
+
 from pydantic import AnyUrl, BaseModel, Field
 
-from src.core.types import ProjectStatuses, TaskType, PlatformType
+from src.core.types import PlatformType, ProjectStatuses, TaskType
 
 
 class AssignmentResponse(BaseModel):

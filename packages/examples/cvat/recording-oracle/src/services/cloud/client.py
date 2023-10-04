@@ -16,7 +16,7 @@ class S3Client:
         endpoint_url: str,
         *,
         access_key: Optional[str] = None,
-        secret_key: Optional[str] = None
+        secret_key: Optional[str] = None,
     ) -> None:
         s3 = boto3.resource(
             "s3",

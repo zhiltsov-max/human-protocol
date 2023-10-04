@@ -1,25 +1,21 @@
 import logging
 
 import httpx
-from src.core.oracle_events import ExchangeOracleEvent_TaskCreationFailed
-
-from src.db import SessionLocal
-
-from src.core.config import CronConfig
-from src.core.types import OracleWebhookTypes, JobLauncherEventType, ProjectStatuses
 from human_protocol_sdk.constants import Status as EscrowStatus
 
-from src.chain.escrow import validate_escrow
-from src.chain.kvstore import get_job_launcher_url
 import src.cvat.tasks as cvat
-from src.log import ROOT_LOGGER_NAME
-
-from src.models.webhook import Webhook
 import src.services.cvat as cvat_db_service
 import src.services.webhook as oracle_db_service
-from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
+from src.chain.escrow import validate_escrow
+from src.chain.kvstore import get_job_launcher_url
+from src.core.config import CronConfig
+from src.core.oracle_events import ExchangeOracleEvent_TaskCreationFailed
+from src.core.types import JobLauncherEventType, OracleWebhookTypes, ProjectStatuses
+from src.db import SessionLocal
+from src.log import ROOT_LOGGER_NAME
+from src.models.webhook import Webhook
 from src.utils.logging import get_function_logger
-
+from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 
 module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 
@@ -49,9 +45,7 @@ def process_incoming_job_launcher_webhooks():
                         f"(attempt {webhook.attempts + 1})"
                     )
 
-                    handle_job_launcher_event(
-                        webhook, db_session=session, logger=logger
-                    )
+                    handle_job_launcher_event(webhook, db_session=session, logger=logger)
 
                     oracle_db_service.inbox.handle_webhook_success(session, webhook.id)
 
@@ -207,9 +201,7 @@ def process_outgoing_job_launcher_webhooks():
                     )
 
                     headers = {"human-signature": signature}
-                    webhook_url = get_job_launcher_url(
-                        webhook.chain_id, webhook.escrow_address
-                    )
+                    webhook_url = get_job_launcher_url(webhook.chain_id, webhook.escrow_address)
                     with httpx.Client() as client:
                         response = client.post(webhook_url, headers=headers, json=body)
                         response.raise_for_status()

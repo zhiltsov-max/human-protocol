@@ -2,25 +2,18 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from sqlalchemy import (
-    Column,
-    String,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-    UniqueConstraint,
-)
-from sqlalchemy.orm import relationship, Mapped
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
 from src.core.types import (
     AssignmentStatus,
+    JobStatuses,
+    Networks,
     ProjectStatuses,
     TaskStatus,
-    JobStatuses,
     TaskType,
-    Networks,
 )
 from src.db import Base
 from src.utils.time import utcnow
@@ -65,7 +58,9 @@ class Task(Base):
     id = Column(String, primary_key=True, index=True)
     cvat_id = Column(Integer, unique=True, index=True, nullable=False)
     cvat_project_id = Column(
-        Integer, ForeignKey("projects.cvat_id", ondelete="CASCADE"), nullable=False
+        Integer,
+        ForeignKey("projects.cvat_id", ondelete="CASCADE"),
+        nullable=False,
     )
     status = Column(String, Enum(TaskStatus), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -106,11 +101,11 @@ class Job(Base):
     __tablename__ = "jobs"
     id = Column(String, primary_key=True, index=True)
     cvat_id = Column(Integer, unique=True, index=True, nullable=False)
-    cvat_task_id = Column(
-        Integer, ForeignKey("tasks.cvat_id", ondelete="CASCADE"), nullable=False
-    )
+    cvat_task_id = Column(Integer, ForeignKey("tasks.cvat_id", ondelete="CASCADE"), nullable=False)
     cvat_project_id = Column(
-        Integer, ForeignKey("projects.cvat_id", ondelete="CASCADE"), nullable=False
+        Integer,
+        ForeignKey("projects.cvat_id", ondelete="CASCADE"),
+        nullable=False,
     )
     status = Column(String, Enum(JobStatuses), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -155,11 +150,11 @@ class Assignment(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True, server_default=None)
     user_wallet_address = Column(
-        String, ForeignKey("users.wallet_address", ondelete="CASCADE"), nullable=False
+        String,
+        ForeignKey("users.wallet_address", ondelete="CASCADE"),
+        nullable=False,
     )
-    cvat_job_id = Column(
-        Integer, ForeignKey("jobs.cvat_id", ondelete="CASCADE"), nullable=False
-    )
+    cvat_job_id = Column(Integer, ForeignKey("jobs.cvat_id", ondelete="CASCADE"), nullable=False)
     status = Column(
         String,
         Enum(AssignmentStatus),
@@ -179,24 +174,24 @@ class Assignment(Base):
         )
 
     def __repr__(self):
-        return (
-            f"Assignment. id={self.id} user={self.user.cvat_id} job={self.job.cvat_id}"
-        )
+        return f"Assignment. id={self.id} user={self.user.cvat_id} job={self.job.cvat_id}"
 
 
 class Image(Base):
     __tablename__ = "images"
     id = Column(String, primary_key=True, index=True)
     cvat_project_id = Column(
-        Integer, ForeignKey("projects.cvat_id", ondelete="CASCADE"), nullable=False
+        Integer,
+        ForeignKey("projects.cvat_id", ondelete="CASCADE"),
+        nullable=False,
     )
     filename = Column(String, nullable=False)
 
     project: Mapped["Project"] = relationship(back_populates="images")
 
-    __table_args__ = (
-        UniqueConstraint("cvat_project_id", "filename", name="_project_filename_uc"),
-    )
+    __table_args__ = (UniqueConstraint("cvat_project_id", "filename", name="_project_filename_uc"),)
 
     def __repr__(self):
-        return f"Image. id={self.id} cvat_project_id={self.cvat_project_id} filename={self.filename}"
+        return (
+            f"Image. id={self.id} cvat_project_id={self.cvat_project_id} filename={self.filename}"
+        )

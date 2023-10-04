@@ -1,15 +1,12 @@
-from fastapi import FastAPI
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import FastAPI
 
 from src.core.config import Config
-
 from src.crons.process_exchange_oracle_webhooks import (
     process_incoming_exchange_oracle_webhooks,
     process_outgoing_exchange_oracle_webhooks,
 )
-from src.crons.process_reputation_oracle_webhooks import (
-    process_outgoing_reputation_oracle_webhooks,
-)
+from src.crons.process_reputation_oracle_webhooks import process_outgoing_reputation_oracle_webhooks
 
 
 def setup_cron_jobs(app: FastAPI):

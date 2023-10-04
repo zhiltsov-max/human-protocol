@@ -1,20 +1,12 @@
 import unittest
 import uuid
 
-from src.db import SessionLocal
-from src.core.types import Networks
-from src.core.types import (
-    OracleWebhookTypes,
-    OracleWebhookStatuses,
-)
-from src.models.webhook import Webhook
 from sqlalchemy.exc import IntegrityError
 
-from src.core.types import (
-    OracleWebhookTypes,
-    OracleWebhookStatuses,
-)
 import src.services.webhook as webhook_service
+from src.core.types import Networks, OracleWebhookStatuses, OracleWebhookTypes
+from src.db import SessionLocal
+from src.models.webhook import Webhook
 
 
 class ServiceIntegrationTest(unittest.TestCase):
@@ -201,9 +193,7 @@ class ServiceIntegrationTest(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            webhook_service.update_webhook_status(
-                self.session, webhook_id, "Invalid status"
-            )
+            webhook_service.update_webhook_status(self.session, webhook_id, "Invalid status")
 
     def test_handle_webhook_success(self):
         escrow_address = "0x1234567890123456789012345678901234567890"

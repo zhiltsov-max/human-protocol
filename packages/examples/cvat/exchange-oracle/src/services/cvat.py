@@ -1,15 +1,13 @@
-from datetime import datetime
 import uuid
-
-from sqlalchemy import ColumnExpressionArgument, delete, insert, update
-from sqlalchemy.sql import select
-from sqlalchemy.orm import Session
-
+from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy import ColumnExpressionArgument, delete, insert, update
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import select
 
-from src.core.types import AssignmentStatus, ProjectStatuses, TaskStatus, JobStatuses
-from src.models.cvat import Assignment, DataUpload, Image, Project, Task, Job, User
+from src.core.types import AssignmentStatus, JobStatuses, ProjectStatuses, TaskStatus
+from src.models.cvat import Assignment, DataUpload, Image, Job, Project, Task, User
 from src.utils.time import utcnow
 
 
@@ -52,9 +50,7 @@ def get_project_by_id(session: Session, project_id: str) -> Optional[Project]:
     return project
 
 
-def get_project_by_escrow_address(
-    session: Session, escrow_address: str
-) -> Optional[Project]:
+def get_project_by_escrow_address(session: Session, escrow_address: str) -> Optional[Project]:
     project_query = select(Project).where(Project.escrow_address == escrow_address)
     project = session.execute(project_query).scalars().first()
 
@@ -82,9 +78,7 @@ def get_available_projects(session: Session, limit: int = 10) -> List[Project]:
             (Project.status == ProjectStatuses.annotation.value)
             & Project.jobs.any(
                 (Job.status == JobStatuses.new)
-                & ~Job.assignments.any(
-                    Assignment.status == AssignmentStatus.created.value
-                )
+                & ~Job.assignments.any(Assignment.status == AssignmentStatus.created.value)
             )
         )
         .distinct()
@@ -118,9 +112,7 @@ def get_projects_by_assignee(
     )
 
 
-def update_project_status(
-    session: Session, project_id: str, status: ProjectStatuses
-) -> None:
+def update_project_status(session: Session, project_id: str, status: ProjectStatuses) -> None:
     upd = update(Project).where(Project.id == project_id).values(status=status.value)
     session.execute(upd)
 
@@ -140,9 +132,7 @@ def is_project_completed(session: Session, project_id: str) -> bool:
 
 
 # Task
-def create_task(
-    session: Session, cvat_id: int, cvat_project_id: int, status: TaskStatus
-) -> str:
+def create_task(session: Session, cvat_id: int, cvat_project_id: int, status: TaskStatus) -> str:
     """
     Create a task from CVAT.
     """
@@ -212,9 +202,7 @@ def create_data_upload(
     return upload_id
 
 
-def get_active_task_uploads_by_task_id(
-    session: Session, task_ids: List[int]
-) -> List[DataUpload]:
+def get_active_task_uploads_by_task_id(session: Session, task_ids: List[int]) -> List[DataUpload]:
     return session.query(DataUpload).where(DataUpload.task_id.in_(task_ids)).all()
 
 
@@ -223,9 +211,7 @@ def get_active_task_uploads(session: Session, *, limit: int = 10) -> List[DataUp
 
 
 def finish_uploads(session: Session, uploads: list[DataUpload]) -> None:
-    statement = delete(DataUpload).where(
-        DataUpload.id.in_([upload.id for upload in uploads])
-    )
+    statement = delete(DataUpload).where(DataUpload.id.in_([upload.id for upload in uploads]))
     session.execute(statement)
 
 
@@ -295,9 +281,7 @@ def get_jobs_by_cvat_project_id(session: Session, cvat_project_id: int) -> List[
 # Users
 
 
-def put_user(
-    session: Session, wallet_address: str, cvat_email: str, cvat_id: int
-) -> User:
+def put_user(session: Session, wallet_address: str, cvat_email: str, cvat_id: int) -> User:
     """
     Bind a CVAT username to a HUMAN App user
     """
@@ -320,7 +304,10 @@ def get_user_by_id(session: Session, wallet_address: str) -> Optional[User]:
 
 
 def create_assignment(
-    session: Session, wallet_address: str, cvat_job_id: int, expires_at: datetime
+    session: Session,
+    wallet_address: str,
+    cvat_job_id: int,
+    expires_at: datetime,
 ) -> str:
     obj_id = str(uuid.uuid4())
     assignment = Assignment(
@@ -350,9 +337,7 @@ def get_latest_assignment_by_cvat_job_id(
     )
 
 
-def get_unprocessed_expired_assignments(
-    session: Session, limit: int = 10
-) -> List[Assignment]:
+def get_unprocessed_expired_assignments(session: Session, limit: int = 10) -> List[Assignment]:
     return (
         session.query(Assignment)
         .where(
@@ -383,7 +368,7 @@ def update_assignment(
     id: str,
     *,
     status: AssignmentStatus,
-    completed_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None,
 ):
     statement = (
         update(Assignment)
@@ -424,13 +409,15 @@ def get_user_assignments_in_cvat_projects(
 
 
 # Image
-def add_project_images(
-    session: Session, cvat_project_id: int, filenames: List[str]
-) -> None:
+def add_project_images(session: Session, cvat_project_id: int, filenames: List[str]) -> None:
     session.execute(
         insert(Image),
         [
-            dict(id=str(uuid.uuid4()), cvat_project_id=cvat_project_id, filename=fn)
+            dict(
+                id=str(uuid.uuid4()),
+                cvat_project_id=cvat_project_id,
+                filename=fn,
+            )
             for fn in filenames
         ],
     )

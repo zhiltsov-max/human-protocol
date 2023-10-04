@@ -1,14 +1,13 @@
-from datetime import datetime
 import json
-from typing import Any, Dict, Optional
+from typing import Any
+
+from eth_account.messages import encode_defunct
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware
 from web3.providers.rpc import HTTPProvider
 
-from eth_account.messages import encode_defunct
-
-from src.core.types import Networks
 from src.core.config import Config
+from src.core.types import Networks
 
 
 def get_web3(chain_id: Networks):

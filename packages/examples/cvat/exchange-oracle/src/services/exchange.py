@@ -1,17 +1,16 @@
 from datetime import timedelta
 from typing import Optional
-from src.db import SessionLocal
 
-from src.core.types import AssignmentStatus, JobStatuses, PlatformType, ProjectStatuses
-from src.schemas import exchange as service_api
-import src.models.cvat as models
 import src.cvat.api_calls as cvat_api
+import src.models.cvat as models
 import src.services.cvat as cvat_service
-
 from src.chain.escrow import get_escrow_manifest
-from src.utils.assignments import parse_manifest, compose_assignment_url
-from src.utils.time import utcnow
+from src.core.types import AssignmentStatus, JobStatuses, PlatformType, ProjectStatuses
+from src.db import SessionLocal
+from src.schemas import exchange as service_api
+from src.utils.assignments import compose_assignment_url, parse_manifest
 from src.utils.requests import get_or_404
+from src.utils.time import utcnow
 
 
 def serialize_task(
@@ -24,15 +23,14 @@ def serialize_task(
         if assignment_id:
             assignment = cvat_service.get_assignments_by_id(session, [assignment_id])[0]
 
-        manifest = parse_manifest(
-            get_escrow_manifest(project.chain_id, project.escrow_address)
-        )
+        manifest = parse_manifest(get_escrow_manifest(project.chain_id, project.escrow_address))
 
         serialized_assignment = None
         if assignment:
             serialized_assignment = service_api.AssignmentResponse(
                 assignment_url=compose_assignment_url(
-                    task_id=assignment.job.cvat_task_id, job_id=assignment.cvat_job_id
+                    task_id=assignment.job.cvat_task_id,
+                    job_id=assignment.cvat_job_id,
                 ),
                 started_at=assignment.created_at,
                 finishes_at=assignment.expires_at,
@@ -88,7 +86,8 @@ def get_tasks_by_assignee(
             assignment = user_assignments.get(project.id)
             results.append(
                 serialize_task(
-                    project.id, assignment_id=assignment.id if assignment else None
+                    project.id,
+                    assignment_id=assignment.id if assignment else None,
                 )
             )
 
@@ -102,18 +101,20 @@ class UserHasUnfinishedAssignmentError(Exception):
 def create_assignment(project_id: int, wallet_address: str) -> Optional[str]:
     with SessionLocal.begin() as session:
         user = get_or_404(
-            cvat_service.get_user_by_id(session, wallet_address), wallet_address, "user"
+            cvat_service.get_user_by_id(session, wallet_address),
+            wallet_address,
+            "user",
         )
         project = get_or_404(
-            cvat_service.get_project_by_id(session, project_id), project_id, "task"
+            cvat_service.get_project_by_id(session, project_id),
+            project_id,
+            "task",
         )
 
         if project.status != ProjectStatuses.annotation:
             return None
 
-        manifest = parse_manifest(
-            get_escrow_manifest(project.chain_id, project.escrow_address)
-        )
+        manifest = parse_manifest(get_escrow_manifest(project.chain_id, project.escrow_address))
 
         unassigned_job: Optional[models.Job] = None
         unfinished_assignments: list[models.Assignment] = []
@@ -133,8 +134,7 @@ def create_assignment(project_id: int, wallet_address: str) -> Optional[str]:
         unfinished_user_assignments = [
             assignment
             for assignment in unfinished_assignments
-            if assignment.user_wallet_address == wallet_address
-            and now < assignment.expires_at
+            if assignment.user_wallet_address == wallet_address and now < assignment.expires_at
         ]
         if unfinished_user_assignments:
             raise UserHasUnfinishedAssignmentError(

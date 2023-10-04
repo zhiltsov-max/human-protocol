@@ -1,20 +1,19 @@
+import io
+import logging
+import zipfile
 from datetime import timedelta
 from enum import Enum
 from http import HTTPStatus
 from time import sleep
 from typing import List, Optional, Tuple
-import io
-import logging
-import zipfile
 
-from src.core.config import Config
-from cvat_sdk.api_client import Configuration, ApiClient, models, exceptions
+from cvat_sdk.api_client import ApiClient, Configuration, exceptions, models
 from cvat_sdk.api_client.api_client import Endpoint
 from cvat_sdk.core.helpers import get_paginated_collection
 
+from src.core.config import Config
 from src.utils.enums import BetterEnumMeta
 from src.utils.time import utcnow
-
 
 _NOTSET = object()
 
@@ -79,9 +78,7 @@ def _get_annotations(
             break
 
         if timeout is not None and timedelta(seconds=timeout) < (utcnow() - time_begin):
-            raise Exception(
-                "Failed to retrieve the dataset from CVAT within the timeout interval"
-            )
+            raise Exception("Failed to retrieve the dataset from CVAT within the timeout interval")
 
         sleep(attempt_interval)
 
@@ -173,9 +170,7 @@ def request_project_annotations(cvat_id: int, format_name: str) -> bool:
                 format_name=format_name,
             )
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling ProjectApi.retrieve_annotations: {e}\n"
-            )
+            logger.exception(f"Exception when calling ProjectApi.retrieve_annotations: {e}\n")
             raise
 
 
@@ -206,9 +201,7 @@ def get_project_annotations(
                 timeout=timeout,
             )
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling ProjectApi.retrieve_annotations: {e}\n"
-            )
+            logger.exception(f"Exception when calling ProjectApi.retrieve_annotations: {e}\n")
             raise
 
 
@@ -262,14 +255,13 @@ def get_cloudstorage_contents(cloudstorage_id: int) -> List[str]:
     logger = logging.getLogger("app")
     with get_api_client() as api_client:
         try:
-            (content_data, response) = api_client.cloudstorages_api.retrieve_content(
-                cloudstorage_id
-            )
+            (
+                content_data,
+                response,
+            ) = api_client.cloudstorages_api.retrieve_content(cloudstorage_id)
             return content_data
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling cloudstorages_api.retrieve_content: {e}\n"
-            )
+            logger.exception(f"Exception when calling cloudstorages_api.retrieve_content: {e}\n")
             raise
 
 
@@ -299,9 +291,7 @@ def put_task_data(
             **kwargs,
         )
         try:
-            (_, response) = api_client.tasks_api.create_data(
-                task_id, data_request=data_request
-            )
+            (_, response) = api_client.tasks_api.create_data(task_id, data_request=data_request)
             return None
 
         except exceptions.ApiException as e:
@@ -330,9 +320,7 @@ def request_task_annotations(cvat_id: int, format_name: str) -> bool:
                 format_name=format_name,
             )
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling TasksApi.retrieve_annotations: {e}\n"
-            )
+            logger.exception(f"Exception when calling TasksApi.retrieve_annotations: {e}\n")
             raise
 
 
@@ -363,9 +351,7 @@ def get_task_annotations(
                 timeout=timeout,
             )
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling TasksApi.retrieve_annotations: {e}\n"
-            )
+            logger.exception(f"Exception when calling TasksApi.retrieve_annotations: {e}\n")
             raise
 
 
@@ -374,7 +360,9 @@ def fetch_task_jobs(task_id: int) -> List[models.JobRead]:
     with get_api_client() as api_client:
         try:
             data = get_paginated_collection(
-                api_client.jobs_api.list_endpoint, task_id=task_id, type="annotation"
+                api_client.jobs_api.list_endpoint,
+                task_id=task_id,
+                type="annotation",
             )
             return data
         except exceptions.ApiException as e:
@@ -403,9 +391,7 @@ def request_job_annotations(cvat_id: int, format_name: str) -> bool:
                 format_name=format_name,
             )
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling JobsApi.retrieve_annotations: {e}\n"
-            )
+            logger.exception(f"Exception when calling JobsApi.retrieve_annotations: {e}\n")
             raise
 
 
@@ -436,9 +422,7 @@ def get_job_annotations(
                 timeout=timeout,
             )
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling JobsApi.retrieve_annotations: {e}\n"
-            )
+            logger.exception(f"Exception when calling JobsApi.retrieve_annotations: {e}\n")
             raise
 
 
@@ -458,9 +442,7 @@ def delete_cloudstorage(cvat_id: int) -> None:
         try:
             api_client.cloudstorages_api.destroy(cvat_id)
         except exceptions.ApiException as e:
-            logger.exception(
-                f"Exception when calling CloudstoragesApi.destroy(): {e}\n"
-            )
+            logger.exception(f"Exception when calling CloudstoragesApi.destroy(): {e}\n")
             raise
 
 
@@ -514,9 +496,7 @@ def clear_job_annotations(job_id: int) -> None:
             if e.status == 404:
                 return None
 
-            logger.exception(
-                f"Exception when calling JobsApi.partial_update_annotations(): {e}\n"
-            )
+            logger.exception(f"Exception when calling JobsApi.partial_update_annotations(): {e}\n")
             raise
 
 
@@ -527,9 +507,7 @@ def update_job_assignee(id: str, assignee_id: Optional[int]):
         try:
             api_client.jobs_api.partial_update(
                 id=id,
-                patched_job_write_request=models.PatchedJobWriteRequest(
-                    assignee=assignee_id
-                ),
+                patched_job_write_request=models.PatchedJobWriteRequest(assignee=assignee_id),
             )
         except exceptions.ApiException as e:
             logger.exception(f"Exception when calling JobsApi.partial_update(): {e}\n")

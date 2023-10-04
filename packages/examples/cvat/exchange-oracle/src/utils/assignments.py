@@ -1,4 +1,5 @@
 from urllib.parse import urljoin
+
 from src.core.config import Config
 from src.core.manifest import TaskManifest
 from src.core.types import Networks

@@ -3,10 +3,7 @@ from typing import Dict, Optional, Tuple
 
 from src.chain.web3 import sign_message
 from src.core.oracle_events import parse_event
-from src.core.types import (
-    Networks,
-    OracleWebhookTypes,
-)
+from src.core.types import Networks, OracleWebhookTypes
 
 
 def prepare_outgoing_webhook_body(
@@ -39,12 +36,8 @@ def prepare_signed_message(
     Optionally, can serialize the input structure.
     """
 
-    assert (message is not None) ^ (
-        body is not None
-    ), "Either 'message' or 'body' expected"
+    assert (message is not None) ^ (body is not None), "Either 'message' or 'body' expected"
 
-    signature, serialized_message = sign_message(
-        chain_id, body if body is not None else message
-    )
+    signature, serialized_message = sign_message(chain_id, body if body is not None else message)
 
     return serialized_message, signature

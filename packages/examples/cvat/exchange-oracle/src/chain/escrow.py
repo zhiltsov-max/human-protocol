@@ -13,7 +13,7 @@ def validate_escrow(
     escrow_address: str,
     *,
     accepted_states: List[Status] = [Status.Pending],
-    allow_no_funds: bool = False
+    allow_no_funds: bool = False,
 ) -> None:
     assert accepted_states
 
@@ -39,9 +39,7 @@ def get_escrow_manifest(chain_id: int, escrow_address: str) -> dict:
 
     manifest_url = escrow_client.get_manifest_url(escrow_address)
 
-    return json.loads(
-        (StorageClient.download_file_from_url(manifest_url)).decode("utf-8")
-    )
+    return json.loads((StorageClient.download_file_from_url(manifest_url)).decode("utf-8"))
 
 
 def get_job_launcher_address(chain_id: int, escrow_address: str) -> str:
@@ -57,8 +55,6 @@ def get_recording_oracle_address(chain_id: int, escrow_address: str) -> str:
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
 
-    recording_oracle_address = escrow_client.get_recording_oracle_address(
-        escrow_address
-    )
+    recording_oracle_address = escrow_client.get_recording_oracle_address(escrow_address)
 
     return recording_oracle_address

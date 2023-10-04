@@ -1,24 +1,21 @@
 import os
+import random
 from tempfile import TemporaryDirectory
 from typing import List
-import random
 
+import datumaro as dm
 from datumaro.util import take_by
 from datumaro.util.image import IMAGE_EXTENSIONS
-import datumaro as dm
 
+import src.cvat.api_calls as cvat_api
+import src.services.cloud as cloud_service
+import src.services.cvat as db_service
 from src.chain.escrow import get_escrow_manifest
 from src.core.manifest import TaskManifest
 from src.core.types import CvatLabelType, TaskStatus, TaskType
 from src.db import SessionLocal
-
 from src.utils.assignments import parse_manifest
 from src.utils.cloud_storage import compose_bucket_url, parse_bucket_url
-
-import src.services.cvat as db_service
-import src.services.cloud as cloud_service
-import src.cvat.api_calls as cvat_api
-
 
 LABEL_TYPE_MAPPING = {
     TaskType.image_label_binary: CvatLabelType.tag,
@@ -49,7 +46,8 @@ def get_gt_filenames(
             f.write(gt_file_data)
 
         gt_dataset = dm.Dataset.import_from(
-            gt_filename, format=DM_GT_DATASET_FORMAT_MAPPING[manifest.annotation.type]
+            gt_filename,
+            format=DM_GT_DATASET_FORMAT_MAPPING[manifest.annotation.type],
         )
 
         gt_filenames = set(s.id + s.media.ext for s in gt_dataset)
@@ -78,7 +76,10 @@ def get_gt_filenames(
 
 
 def make_job_configuration(
-    data_filenames: List[str], gt_filenames: List[str], *, manifest: TaskManifest
+    data_filenames: List[str],
+    gt_filenames: List[str],
+    *,
+    manifest: TaskManifest,
 ) -> List[List[str]]:
     # Make job layouts wrt. manifest params, 1 job per task (CVAT can't repeat images in jobs)
     gt_filenames_index = set(gt_filenames)
@@ -149,9 +150,7 @@ def create_task(escrow_address: str, chain_id: int) -> None:
     )
     gt_filenames = get_gt_filenames(gt_file_data, data_filenames, manifest=manifest)
 
-    job_configuration = make_job_configuration(
-        data_filenames, gt_filenames, manifest=manifest
-    )
+    job_configuration = make_job_configuration(data_filenames, gt_filenames, manifest=manifest)
     label_configuration = make_label_configuration(manifest)
 
     # Create a project
@@ -185,14 +184,15 @@ def create_task(escrow_address: str, chain_id: int) -> None:
         task = cvat_api.create_task(project.id, escrow_address)
 
         with SessionLocal.begin() as session:
-            db_service.create_task(
-                session, task.id, project.id, TaskStatus[task.status]
-            )
+            db_service.create_task(session, task.id, project.id, TaskStatus[task.status])
 
         # Actual task creation in CVAT takes some time, so it's done in an async process.
         # The task will be created in DB once 'update:task' or 'update:job' webhook is received.
         cvat_api.put_task_data(
-            task.id, cloud_storage.id, filenames=job_filenames, sort_images=False
+            task.id,
+            cloud_storage.id,
+            filenames=job_filenames,
+            sort_images=False,
         )
 
         with SessionLocal.begin() as session:

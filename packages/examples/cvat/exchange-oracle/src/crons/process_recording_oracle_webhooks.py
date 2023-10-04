@@ -1,14 +1,13 @@
 import logging
+
 import httpx
-
 from sqlalchemy.orm import Session
-from src.core.oracle_events import RecordingOracleEvent_TaskRejected
 
-from src.db import SessionLocal
-from src.core.config import CronConfig
-
+import src.services.cvat as cvat_db_service
+import src.services.webhook as oracle_db_service
 from src.chain.kvstore import get_recording_oracle_url
-
+from src.core.config import CronConfig
+from src.core.oracle_events import RecordingOracleEvent_TaskRejected
 from src.core.types import (
     JobStatuses,
     OracleWebhookTypes,
@@ -16,17 +15,11 @@ from src.core.types import (
     RecordingOracleEventType,
     TaskStatus,
 )
+from src.db import SessionLocal
 from src.log import ROOT_LOGGER_NAME
 from src.models.webhook import Webhook
-from src.utils.webhooks import (
-    prepare_outgoing_webhook_body,
-    prepare_signed_message,
-)
-
-import src.services.cvat as cvat_db_service
-import src.services.webhook as oracle_db_service
 from src.utils.logging import get_function_logger
-
+from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 
 module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 
@@ -49,9 +42,7 @@ def process_incoming_recording_oracle_webhooks():
 
             for webhook in webhooks:
                 try:
-                    handle_recording_oracle_event(
-                        webhook, db_session=session, logger=logger
-                    )
+                    handle_recording_oracle_event(webhook, db_session=session, logger=logger)
 
                     oracle_db_service.inbox.handle_webhook_success(session, webhook.id)
                 except Exception as e:
@@ -63,9 +54,7 @@ def process_incoming_recording_oracle_webhooks():
         logger.debug("Finishing cron job")
 
 
-def handle_recording_oracle_event(
-    webhook: Webhook, *, db_session: Session, logger: logging.Logger
-):
+def handle_recording_oracle_event(webhook: Webhook, *, db_session: Session, logger: logging.Logger):
     assert webhook.type == OracleWebhookTypes.recording_oracle
 
     match webhook.event_type:
@@ -116,9 +105,7 @@ def handle_recording_oracle_event(
                 )
                 return
 
-            rejected_jobs = cvat_db_service.get_jobs_by_cvat_id(
-                db_session, event.rejected_job_ids
-            )
+            rejected_jobs = cvat_db_service.get_jobs_by_cvat_id(db_session, event.rejected_job_ids)
 
             tasks_to_update = set()
 
@@ -127,9 +114,7 @@ def handle_recording_oracle_event(
                 cvat_db_service.update_job_status(db_session, job.id, JobStatuses.new)
 
             for task_id in tasks_to_update:
-                cvat_db_service.update_task_status(
-                    db_session, task_id, TaskStatus.annotation
-                )
+                cvat_db_service.update_task_status(db_session, task_id, TaskStatus.annotation)
 
             cvat_db_service.update_project_status(
                 db_session, project.id, ProjectStatuses.annotation
@@ -179,9 +164,7 @@ def process_outgoing_recording_oracle_webhooks():
                     )
 
                     headers = {"human-signature": signature}
-                    webhook_url = get_recording_oracle_url(
-                        webhook.chain_id, webhook.escrow_address
-                    )
+                    webhook_url = get_recording_oracle_url(webhook.chain_id, webhook.escrow_address)
                     with httpx.Client() as client:
                         response = client.post(webhook_url, headers=headers, json=body)
                         response.raise_for_status()

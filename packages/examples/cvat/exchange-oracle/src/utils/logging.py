@@ -3,7 +3,6 @@ from typing import NewType, Optional, Union
 
 from src.utils.stack import current_function_name
 
-
 LogLevel = NewType("LogLevel", int)
 
 

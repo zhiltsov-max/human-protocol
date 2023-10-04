@@ -5,10 +5,10 @@ Revises:
 Create Date: 2023-09-05 12:21:16.845285
 
 """
-from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "9a7dfe7494c2"
@@ -58,7 +58,10 @@ def upgrade() -> None:
     op.create_index(op.f("ix_users_cvat_email"), "users", ["cvat_email"], unique=True)
     op.create_index(op.f("ix_users_cvat_id"), "users", ["cvat_id"], unique=True)
     op.create_index(
-        op.f("ix_users_wallet_address"), "users", ["wallet_address"], unique=False
+        op.f("ix_users_wallet_address"),
+        "users",
+        ["wallet_address"],
+        unique=False,
     )
     op.create_table(
         "webhooks",
@@ -88,9 +91,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_webhooks_id"), "webhooks", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_webhooks_signature"), "webhooks", ["signature"], unique=True
-    )
+    op.create_index(op.f("ix_webhooks_signature"), "webhooks", ["signature"], unique=True)
     op.create_table(
         "tasks",
         sa.Column("id", sa.String(), nullable=False),
@@ -104,9 +105,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["cvat_project_id"], ["projects.cvat_id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["cvat_project_id"], ["projects.cvat_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_tasks_cvat_id"), "tasks", ["cvat_id"], unique=True)
@@ -120,7 +119,10 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_data_uploads_id"), "data_uploads", ["id"], unique=False)
     op.create_index(
-        op.f("ix_data_uploads_task_id"), "data_uploads", ["task_id"], unique=True
+        op.f("ix_data_uploads_task_id"),
+        "data_uploads",
+        ["task_id"],
+        unique=True,
     )
     op.create_table(
         "jobs",
@@ -136,12 +138,8 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["cvat_project_id"], ["projects.cvat_id"], ondelete="CASCADE"
-        ),
-        sa.ForeignKeyConstraint(
-            ["cvat_task_id"], ["tasks.cvat_id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["cvat_project_id"], ["projects.cvat_id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(["cvat_task_id"], ["tasks.cvat_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_jobs_cvat_id"), "jobs", ["cvat_id"], unique=True)
@@ -162,7 +160,9 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), server_default="created", nullable=False),
         sa.ForeignKeyConstraint(["cvat_job_id"], ["jobs.cvat_id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(
-            ["user_wallet_address"], ["users.wallet_address"], ondelete="CASCADE"
+            ["user_wallet_address"],
+            ["users.wallet_address"],
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
     )

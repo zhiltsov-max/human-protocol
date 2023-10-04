@@ -2,41 +2,37 @@ import io
 import logging
 import os
 from typing import Dict
+
 import httpx
 from sqlalchemy.orm import Session
-from src.chain.kvstore import get_exchange_oracle_url
 
+import src.chain.escrow as escrow
+import src.core.annotation_meta as annotation
+import src.core.validation_meta as validation
+import src.services.cloud.client as cloud_client
+import src.services.webhook as oracle_db_service
+from src.chain.kvstore import get_exchange_oracle_url
+from src.core.config import Config
 from src.core.oracle_events import (
     RecordingOracleEvent_TaskCompleted,
     RecordingOracleEvent_TaskRejected,
 )
-
-from src.core.config import Config
+from src.core.types import ExchangeOracleEventType, OracleWebhookTypes
 from src.db import SessionLocal
-from src.log import ROOT_LOGGER_NAME
-from src.models.webhook import Webhook
-from src.utils.assignments import compute_resulting_annotations_hash, parse_manifest
-from src.utils.cloud_storage import parse_bucket_url
-from src.utils.logging import get_function_logger
-from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
-
 from src.handlers.process_intermediate_results import (
     ValidationSuccess,
     parse_annotation_metafile,
     process_intermediate_results,
     serialize_validation_meta,
 )
-
-from src.core.types import ExchangeOracleEventType, OracleWebhookTypes
-import src.services.cloud.client as cloud_client
+from src.log import ROOT_LOGGER_NAME
+from src.models.webhook import Webhook
 from src.services.cloud import download_file
-import src.core.annotation_meta as annotation
-import src.core.validation_meta as validation
+from src.utils.assignments import compute_resulting_annotations_hash, parse_manifest
+from src.utils.cloud_storage import parse_bucket_url
+from src.utils.logging import get_function_logger
 from src.utils.storage import compose_bucket_filename
-
-import src.services.webhook as oracle_db_service
-import src.chain.escrow as escrow
-
+from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 
 module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 
@@ -66,9 +62,7 @@ def process_incoming_exchange_oracle_webhooks():
                         f"(attempt {webhook.attempts + 1})"
                     )
 
-                    handle_exchange_oracle_event(
-                        webhook, db_session=session, logger=logger
-                    )
+                    handle_exchange_oracle_event(webhook, db_session=session, logger=logger)
 
                     oracle_db_service.inbox.handle_webhook_success(session, webhook.id)
                     logger.debug("Webhook handled successfully")
@@ -81,9 +75,7 @@ def process_incoming_exchange_oracle_webhooks():
         logger.debug("Finishing cron job")
 
 
-def handle_exchange_oracle_event(
-    webhook: Webhook, *, db_session: Session, logger: logging.Logger
-):
+def handle_exchange_oracle_event(webhook: Webhook, *, db_session: Session, logger: logging.Logger):
     assert webhook.type == OracleWebhookTypes.exchange_oracle
 
     match webhook.event_type:
@@ -99,12 +91,8 @@ def handle_exchange_oracle_event(
                 escrow.get_escrow_manifest(webhook.chain_id, webhook.escrow_address)
             )
 
-            excor_bucket_host = (
-                Config.exchange_oracle_storage_config.provider_endpoint_url()
-            )
-            excor_bucket_name = (
-                Config.exchange_oracle_storage_config.results_bucket_name
-            )
+            excor_bucket_host = Config.exchange_oracle_storage_config.provider_endpoint_url()
+            excor_bucket_name = Config.exchange_oracle_storage_config.results_bucket_name
 
             excor_annotation_meta_path = compose_bucket_filename(
                 webhook.escrow_address,
@@ -114,9 +102,7 @@ def handle_exchange_oracle_event(
             annotation_metafile_data = download_file(
                 excor_bucket_host, excor_bucket_name, excor_annotation_meta_path
             )
-            annotation_meta = parse_annotation_metafile(
-                io.BytesIO(annotation_metafile_data)
-            )
+            annotation_meta = parse_annotation_metafile(io.BytesIO(annotation_metafile_data))
 
             job_annotations: Dict[int, bytes] = {}
             for job_meta in annotation_meta.jobs:
@@ -177,9 +163,7 @@ def handle_exchange_oracle_event(
                     webhook.chain_id,
                     validation.VALIDATION_METAFILE_NAME,
                 )
-                validation_metafile = serialize_validation_meta(
-                    validation_results.validation_meta
-                )
+                validation_metafile = serialize_validation_meta(validation_results.validation_meta)
 
                 storage_client = cloud_client.S3Client(
                     Config.storage_config.provider_endpoint_url(),
@@ -204,9 +188,7 @@ def handle_exchange_oracle_event(
                     webhook.escrow_address,
                     Config.storage_config.bucket_url()
                     + os.path.dirname(recor_merged_annotations_path),
-                    compute_resulting_annotations_hash(
-                        validation_results.resulting_annotations
-                    ),
+                    compute_resulting_annotations_hash(validation_results.resulting_annotations),
                 )
 
                 oracle_db_service.outbox.create_webhook(
@@ -284,9 +266,7 @@ def process_outgoing_exchange_oracle_webhooks():
                     )
 
                     headers = {"human-signature": signature}
-                    webhook_url = get_exchange_oracle_url(
-                        webhook.chain_id, webhook.escrow_address
-                    )
+                    webhook_url = get_exchange_oracle_url(webhook.chain_id, webhook.escrow_address)
                     with httpx.Client() as client:
                         response = client.post(webhook_url, headers=headers, json=body)
                         response.raise_for_status()

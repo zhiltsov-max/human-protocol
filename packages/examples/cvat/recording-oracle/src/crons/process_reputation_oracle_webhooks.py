@@ -1,17 +1,13 @@
 import httpx
 
-from src.db import SessionLocal
-from src.core.config import CronConfig
-
-from src.chain.kvstore import get_reputation_oracle_url
-
-from src.core.types import OracleWebhookTypes
-from src.log import ROOT_LOGGER_NAME
-from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
-
 import src.services.webhook as oracle_db_service
+from src.chain.kvstore import get_reputation_oracle_url
+from src.core.config import CronConfig
+from src.core.types import OracleWebhookTypes
+from src.db import SessionLocal
+from src.log import ROOT_LOGGER_NAME
 from src.utils.logging import get_function_logger
-
+from src.utils.webhooks import prepare_outgoing_webhook_body, prepare_signed_message
 
 module_logger_name = f"{ROOT_LOGGER_NAME}.cron.webhook"
 

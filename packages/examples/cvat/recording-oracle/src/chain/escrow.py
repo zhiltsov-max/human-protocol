@@ -1,5 +1,6 @@
 import json
 from typing import List
+
 from human_protocol_sdk.constants import Status
 from human_protocol_sdk.escrow import EscrowClient
 from human_protocol_sdk.storage import StorageClient
@@ -14,16 +15,11 @@ def get_escrow_manifest(chain_id: int, escrow_address: str) -> dict:
 
     manifest_url = escrow_client.get_manifest_url(escrow_address)
 
-    return json.loads(
-        (StorageClient.download_file_from_url(manifest_url)).decode("utf-8")
-    )
+    return json.loads((StorageClient.download_file_from_url(manifest_url)).decode("utf-8"))
 
 
 def validate_escrow(
-    chain_id: int,
-    escrow_address: str,
-    *,
-    accepted_states: List[Status] = [Status.Pending]
+    chain_id: int, escrow_address: str, *, accepted_states: List[Status] = [Status.Pending]
 ) -> None:
     assert accepted_states
 
@@ -54,9 +50,7 @@ def get_reputation_oracle_address(chain_id: int, escrow_address: str) -> str:
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
 
-    reputation_oracle_address = escrow_client.get_reputation_oracle_address(
-        escrow_address
-    )
+    reputation_oracle_address = escrow_client.get_reputation_oracle_address(escrow_address)
 
     return reputation_oracle_address
 

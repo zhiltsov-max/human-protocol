@@ -1,22 +1,20 @@
-from glob import glob
 import io
 import os
-from defusedxml import ElementTree as ET
-from tempfile import TemporaryDirectory
-from typing import List, Dict, Sequence
 import zipfile
+from glob import glob
+from tempfile import TemporaryDirectory
+from typing import Dict, List, Sequence
 
-from attrs import define
 import datumaro as dm
-
+from attrs import define
+from defusedxml import ElementTree as ET
 
 from src.core.annotation_meta import ANNOTATION_METAFILE_NAME, AnnotationMeta, JobMeta
 from src.core.manifest import TaskManifest
 from src.core.types import TaskType
 from src.cvat.tasks import DM_DATASET_FORMAT_MAPPING
-from src.models.cvat import Job, Image
+from src.models.cvat import Image, Job
 from src.utils.zip_archive import extract_zip_archive, write_dir_to_zip_archive
-
 
 CVAT_EXPORT_FORMAT_MAPPING = {
     TaskType.image_label_binary: "CVAT for images 1.1",
@@ -55,9 +53,7 @@ def prepare_annotation_metafile(
         ]
     )
 
-    return FileDescriptor(
-        ANNOTATION_METAFILE_NAME, file=io.BytesIO(meta.json().encode())
-    )
+    return FileDescriptor(ANNOTATION_METAFILE_NAME, file=io.BytesIO(meta.json().encode()))
 
 
 def flatten_points(input_points: List[dm.Points]) -> List[dm.Points]:
@@ -73,9 +69,7 @@ def flatten_points(input_points: List[dm.Points]) -> List[dm.Points]:
 
 
 def fix_cvat_annotations(dataset_root: str):
-    for annotation_filename in glob(
-        os.path.join(dataset_root, "**/*.xml"), recursive=True
-    ):
+    for annotation_filename in glob(os.path.join(dataset_root, "**/*.xml"), recursive=True):
         with open(annotation_filename, "rb+") as f:
             doc = ET.parse(f)
             doc_root = doc.getroot()
@@ -123,12 +117,8 @@ def convert_point_arrays_dataset_to_1_point_skeletons(
     )
 
     label_id_map: Dict[int, int] = {
-        original_id: new_label_cat.find(
-            label.name, parent=_get_skeleton_label(label.name)
-        )[0]
-        for original_id, label in enumerate(
-            dataset.categories()[dm.AnnotationType.label]
-        )
+        original_id: new_label_cat.find(label.name, parent=_get_skeleton_label(label.name))[0]
+        for original_id, label in enumerate(dataset.categories()[dm.AnnotationType.label])
     }  # old id -> new id
 
     for sample in dataset:
@@ -185,9 +175,7 @@ def postprocess_annotations(
     # We need to convert point arrays, which cannot be represented in COCO directly,
     # into the 1-point skeletons, compatible with COCO person keypoints, which is the
     # required output format
-    input_format = CVAT_EXPORT_FORMAT_TO_DM_MAPPING[
-        CVAT_EXPORT_FORMAT_MAPPING[task_type]
-    ]
+    input_format = CVAT_EXPORT_FORMAT_TO_DM_MAPPING[CVAT_EXPORT_FORMAT_MAPPING[task_type]]
     resulting_format = DM_DATASET_FORMAT_MAPPING[task_type]
 
     with TemporaryDirectory() as tempdir:
@@ -197,7 +185,8 @@ def postprocess_annotations(
             ann_descriptor.file.seek(0)
 
             extract_dir = os.path.join(
-                tempdir, os.path.splitext(os.path.basename(ann_descriptor.filename))[0]
+                tempdir,
+                os.path.splitext(os.path.basename(ann_descriptor.filename))[0],
             )
             extract_zip_archive(ann_descriptor.file, extract_dir)
 
@@ -205,7 +194,8 @@ def postprocess_annotations(
             dataset = dm.Dataset.import_from(extract_dir, input_format)
 
             converted_dataset = convert_point_arrays_dataset_to_1_point_skeletons(
-                dataset, labels=[label.name for label in manifest.annotation.labels]
+                dataset,
+                labels=[label.name for label in manifest.annotation.labels],
             )
 
             if ann_descriptor.filename == merged_annotation.filename:
@@ -216,8 +206,7 @@ def postprocess_annotations(
 
             export_dir = os.path.join(
                 tempdir,
-                os.path.splitext(os.path.basename(ann_descriptor.filename))[0]
-                + "_conv",
+                os.path.splitext(os.path.basename(ann_descriptor.filename))[0] + "_conv",
             )
             converted_dataset.export(export_dir, resulting_format, save_images=False)
 

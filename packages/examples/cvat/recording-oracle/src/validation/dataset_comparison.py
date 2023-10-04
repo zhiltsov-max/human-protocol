@@ -1,15 +1,11 @@
 import itertools
 from typing import Any, Callable, Dict, Tuple
-from attrs import define, field
-import numpy as np
+
 import datumaro as dm
-from .annotation_matching import (
-    Bbox,
-    Point,
-    match_annotations,
-    bbox_iou,
-    point_to_bbox_cmp,
-)
+import numpy as np
+from attrs import define, field
+
+from .annotation_matching import Bbox, Point, bbox_iou, match_annotations, point_to_bbox_cmp
 
 
 class CachedSimilarityFunction:

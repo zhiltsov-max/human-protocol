@@ -1,14 +1,13 @@
 # pylint: disable=too-few-public-methods
 from __future__ import annotations
+
 from typing import List
 
-from sqlalchemy import Column, Float, String, DateTime, Enum, ForeignKey, Integer
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy import Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
-from src.core.types import (
-    Networks,
-)
+from src.core.types import Networks
 from src.db import Base
 
 

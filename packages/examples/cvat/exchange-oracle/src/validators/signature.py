@@ -1,12 +1,13 @@
 import hmac
 from ast import literal_eval
 from hashlib import sha256
-
 from http import HTTPStatus
+
 from fastapi import HTTPException, Request
-from src.core.config import Config
+
 from src.chain.escrow import get_job_launcher_address, get_recording_oracle_address
 from src.chain.web3 import recover_signer
+from src.core.config import Config
 from src.core.types import OracleWebhookTypes
 from src.schemas.webhook import OracleWebhook
 
@@ -19,9 +20,7 @@ async def validate_oracle_webhook_signature(
 
     signer = recover_signer(webhook.chain_id, message, signature)
 
-    job_launcher_address = get_job_launcher_address(
-        webhook.chain_id, webhook.escrow_address
-    )
+    job_launcher_address = get_job_launcher_address(webhook.chain_id, webhook.escrow_address)
     recording_oracle_address = get_recording_oracle_address(
         webhook.chain_id, webhook.escrow_address
     )

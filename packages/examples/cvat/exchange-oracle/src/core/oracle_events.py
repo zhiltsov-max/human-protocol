@@ -1,4 +1,5 @@
 from typing import Optional, Type, Union
+
 from pydantic import BaseModel
 
 from src.core.types import (
@@ -7,7 +8,6 @@ from src.core.types import (
     OracleWebhookTypes,
     RecordingOracleEventType,
 )
-
 
 EventTypeTag = Union[
     ExchangeOracleEventType,
@@ -67,7 +67,9 @@ def get_class_for_event_type(event_type: str) -> Type[OracleEvent]:
     return event_class
 
 
-def get_type_tag_for_event_class(event_class: Type[OracleEvent]) -> EventTypeTag:
+def get_type_tag_for_event_class(
+    event_class: Type[OracleEvent],
+) -> EventTypeTag:
     event_type = next((k for k, v in _event_type_map.items() if v == event_class), None)
 
     if not event_type:
@@ -77,7 +79,9 @@ def get_type_tag_for_event_class(event_class: Type[OracleEvent]) -> EventTypeTag
 
 
 def parse_event(
-    sender: OracleWebhookTypes, event_type: str, event_data: Optional[dict] = None
+    sender: OracleWebhookTypes,
+    event_type: str,
+    event_data: Optional[dict] = None,
 ) -> OracleEvent:
     sender_events_mapping = {
         OracleWebhookTypes.job_launcher: JobLauncherEventType,
