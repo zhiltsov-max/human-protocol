@@ -13,6 +13,7 @@ from src.core.oracle_events import OracleEvent, validate_event
 from src.core.types import OracleWebhookStatuses, OracleWebhookTypes
 from src.models.webhook import Webhook
 from src.utils.enums import BetterEnumMeta
+from src.utils.time import utcnow
 
 
 class OracleWebhookDirectionTag(str, Enum, metaclass=BetterEnumMeta):
@@ -93,7 +94,7 @@ class OracleWebhookQueue:
                 Webhook.direction == self.direction.value,
                 Webhook.type == sender_type.value,
                 Webhook.status == OracleWebhookStatuses.pending.value,
-                Webhook.wait_until <= datetime.datetime.now(),
+                Webhook.wait_until <= utcnow(),
             )
             .limit(limit)
             .all()
@@ -130,8 +131,8 @@ class OracleWebhookQueue:
                     ),
                     else_=OracleWebhookStatuses.pending.value,
                 ),
-                wait_until=Webhook.wait_until
-                + datetime.timedelta(minutes=Config.webhook_delay_if_failed),
+                # TODO: consider exponential strategy
+                wait_until=utcnow() + datetime.timedelta(seconds=Config.webhook_delay_if_failed),
             )
         )
         session.execute(upd)

@@ -132,7 +132,7 @@ class Config:
     environment = os.environ.get("ENVIRONMENT", "development")
     workers_amount = int(os.environ.get("WORKERS_AMOUNT", 1))
     webhook_max_retries = int(os.environ.get("WEBHOOK_MAX_RETRIES", 5))
-    webhook_delay_if_failed = int(os.environ.get("WEBHOOK_DELAY_IF_FAILED", 5))
+    webhook_delay_if_failed = int(os.environ.get("WEBHOOK_DELAY_IF_FAILED", 60))
     loglevel = parse_log_level(os.environ.get("LOGLEVEL", "info"))
 
     polygon_mainnet = PolygonMainnetConfig
