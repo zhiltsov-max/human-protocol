@@ -51,14 +51,6 @@ def process_outgoing_reputation_oracle_webhooks():
                     body.pop("event_data")
                     # ^^^
 
-                    # FIXME: If using against the launcher from
-                    # https://github.com/humanprotocol/human-protocol/pull/889
-                    # Add this:
-                    # body["escrowAddress"] = body.pop("escrow_address")
-                    # body["chainId"] = body.pop("chain_id")
-                    # body["eventType"] = body.pop("event_type")
-                    # ^^^
-
                     _, signature = prepare_signed_message(
                         webhook.escrow_address,
                         webhook.chain_id,

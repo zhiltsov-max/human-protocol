@@ -56,10 +56,6 @@ def get_reputation_oracle_address(chain_id: int, escrow_address: str) -> str:
 
 
 def get_exchange_oracle_address(chain_id: int, escrow_address: str) -> str:
-    # TODO: remove mock (not supported yet)
-    assert Config.localhost.exchange_oracle_address
-    return Config.localhost.exchange_oracle_address
-
     web3 = get_web3(chain_id)
     escrow_client = EscrowClient(web3)
 
