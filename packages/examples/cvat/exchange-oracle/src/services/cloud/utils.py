@@ -1,7 +1,7 @@
 from typing import Optional
 
 from src.services.cloud.client import StorageClient
-from src.services.cloud.gcs import DEFAULT_GCS_HOST, GCSClient
+from src.services.cloud.gcs import DEFAULT_GCS_HOST, GcsClient
 from src.services.cloud.s3 import DEFAULT_S3_HOST, S3Client
 from src.services.cloud.types import BucketAccessInfo, CloudProviders
 
@@ -34,7 +34,7 @@ def make_client(
             if bucket_info.host_url:
                 client_kwargs["endpoint_url"] = bucket_info.host_url
         case CloudProviders.gcs:
-            client_type = GCSClient
+            client_type = GcsClient
 
             if bucket_info.credentials:
                 client_kwargs["service_account_key"] = bucket_info.credentials.service_account_key

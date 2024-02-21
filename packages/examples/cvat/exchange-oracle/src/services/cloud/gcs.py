@@ -9,7 +9,7 @@ from src.services.cloud.client import StorageClient
 DEFAULT_GCS_HOST = "storage.googleapis.com"
 
 
-class GCSClient(StorageClient):
+class GcsClient(StorageClient):
     def __init__(
         self,
         *,
