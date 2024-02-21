@@ -1,9 +1,8 @@
-import json
 from decimal import Decimal
 from enum import Enum
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Any, Dict, Literal, Optional, Union
 
-from pydantic import AnyUrl, BaseModel, Field, root_validator, validator
+from pydantic import AnyUrl, BaseModel, Field, root_validator
 
 from src.core.config import Config
 from src.core.types import TaskType
@@ -14,32 +13,22 @@ class BucketProvider(str, Enum):
     gcs = "GCS"
 
 
-class _BucketUrlBase(BaseModel):
+class BucketUrlBase(BaseModel):
     provider: BucketProvider
     host_url: str
     bucket_name: str
     path: str = ""
 
 
-class AwsBucketUrl(_BucketUrlBase, BaseModel):
+class AwsBucketUrl(BucketUrlBase, BaseModel):
     provider: Literal[BucketProvider.aws]
     access_key: str = ""  # (optional) AWS Access key
     secret_key: str = ""  # (optional) AWS Secret key
 
 
-class GcsBucketUrl(_BucketUrlBase, BaseModel):
+class GcsBucketUrl(BucketUrlBase, BaseModel):
     provider: Literal[BucketProvider.gcs]
-    service_account_key: str = ""  # (optional) Contents of GCS key file
-
-    @validator("service_account_key")
-    def _service_account_key_is_json(self, v: str) -> str:
-        if v:
-            try:
-                json.loads(v)
-            except ValueError:
-                raise ValueError("Failed to parse a JSON document")
-
-        return v
+    service_account_key: Dict[str, Any] = {}  # (optional) Contents of GCS key file
 
 
 BucketUrl = Annotated[Union[AwsBucketUrl, GcsBucketUrl], Field(discriminator="provider")]

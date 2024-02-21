@@ -147,7 +147,7 @@ class BucketAccessInfo:
             data["credentials"] = S3BucketCredentials(access_key, secret_key)
 
         elif service_account_key := data.pop("service_account_key", None):
-            data["credentials"] = GcsBucketCredentials(json.loads(service_account_key))
+            data["credentials"] = GcsBucketCredentials(service_account_key)
 
         return BucketAccessInfo(**data)
 
@@ -168,7 +168,7 @@ class BucketAccessInfo:
     ) -> BucketAccessInfo:
         if isinstance(data, dict):
             return cls.from_dict(data)
-        elif isinstance(data, manifest.BucketUrl):
+        elif isinstance(data, manifest.BucketUrlBase):
             return cls.from_dict(data.dict())
         elif isinstance(data, str):
             return cls.from_url(data)
