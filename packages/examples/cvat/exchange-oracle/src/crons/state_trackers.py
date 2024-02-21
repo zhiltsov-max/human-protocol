@@ -23,7 +23,7 @@ from src.handlers.job_export import (
     prepare_annotation_metafile,
 )
 from src.log import ROOT_LOGGER_NAME
-from src.services.cloud.types import BucketAccessInfo
+from src.services.cloud import BucketAccessInfo
 from src.utils.assignments import parse_manifest
 from src.utils.logging import get_function_logger
 
@@ -190,7 +190,7 @@ def retrieve_annotations() -> None:
     Retrieves and stores completed annotations:
     1. Retrieves annotations from projects with "completed" status
     2. Postprocesses them
-    3. Stores annotations in S3/GCS bucket
+    3. Stores annotations in the oracle bucket
     4. Prepares a webhook to recording oracle
     """
     logger = get_function_logger(module_logger)

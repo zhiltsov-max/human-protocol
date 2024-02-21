@@ -96,15 +96,16 @@ class IStorageConfig:
 
 
 class StorageConfig(IStorageConfig):
-    # common attributes
     provider = os.environ["STORAGE_PROVIDER"].lower()
     endpoint_url = os.environ["STORAGE_ENDPOINT_URL"]  # TODO: probably should be optional
     region = os.environ.get("STORAGE_REGION")
     data_bucket_name = os.environ["STORAGE_RESULTS_BUCKET_NAME"]
     secure = to_bool(os.environ.get("STORAGE_USE_SSL", "true"))
+
     # AWS S3 specific attributes
     access_key = os.environ.get("STORAGE_ACCESS_KEY")
     secret_key = os.environ.get("STORAGE_SECRET_KEY")
+
     # GCS specific attributes
     key_file_path = os.environ.get("STORAGE_KEY_FILE_PATH")
 

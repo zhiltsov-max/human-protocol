@@ -90,7 +90,6 @@ class CvatConfig:
 
 
 class StorageConfig:
-    # common attributes
     provider: ClassVar[str] = os.environ["STORAGE_PROVIDER"].lower()
     data_bucket_name: ClassVar[str] = os.environ["STORAGE_RESULTS_BUCKET_NAME"]
     endpoint_url: ClassVar[str] = os.environ[
@@ -98,10 +97,12 @@ class StorageConfig:
     ]  # TODO: probably should be optional
     region: ClassVar[Optional[str]] = os.environ.get("STORAGE_REGION")
     results_dir_suffix: ClassVar[str] = os.environ.get("STORAGE_RESULTS_DIR_SUFFIX", "-results")
-    secure: ClassVar[str] = to_bool(os.environ.get("STORAGE_USE_SSL", "true"))
+    secure: ClassVar[bool] = to_bool(os.environ.get("STORAGE_USE_SSL", "true"))
+
     # S3 specific attributes
     access_key: ClassVar[Optional[str]] = os.environ.get("STORAGE_ACCESS_KEY")
     secret_key: ClassVar[Optional[str]] = os.environ.get("STORAGE_SECRET_KEY")
+
     # GCS specific attributes
     key_file_path: ClassVar[Optional[str]] = os.environ.get("STORAGE_KEY_FILE_PATH")
 
