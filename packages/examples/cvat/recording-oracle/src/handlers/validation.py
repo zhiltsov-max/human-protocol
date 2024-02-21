@@ -46,9 +46,7 @@ class _TaskValidator:
         self.db_session = db_session
         self.logger: Logger = NullLogger()
 
-        self.data_bucket = BucketAccessInfo.parse_obj(
-            Config.exchange_oracle_storage_config
-        )
+        self.data_bucket = BucketAccessInfo.parse_obj(Config.exchange_oracle_storage_config)
 
         self.annotation_meta: Optional[annotation.AnnotationMeta] = None
         self.job_annotations: Optional[Dict[int, bytes]] = None
@@ -66,9 +64,7 @@ class _TaskValidator:
             self.chain_id,
             annotation.ANNOTATION_RESULTS_METAFILE_NAME,
         )
-        annotation_metafile_data = data_bucket_client.download_fileobj(
-            annotation_meta_path
-        )
+        annotation_metafile_data = data_bucket_client.download_fileobj(annotation_meta_path)
         self.annotation_meta = parse_annotation_metafile(io.BytesIO(annotation_metafile_data))
 
     def _download_annotations(self):

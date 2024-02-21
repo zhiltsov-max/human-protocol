@@ -822,7 +822,11 @@ class BoxesFromPointsTaskBuilder:
             CLOUD_PROVIDER_TO_CVAT_CLOUD_PROVIDER[oracle_bucket.provider],
             oracle_bucket.bucket_name,
             bucket_host=oracle_bucket.host_url,
-            **({ "credentials": oracle_bucket.credentials.to_dict() } if oracle_bucket.credentials else {})
+            **(
+                {"credentials": oracle_bucket.credentials.to_dict()}
+                if oracle_bucket.credentials
+                else {}
+            ),
         )
 
         # Create a project
@@ -1021,7 +1025,11 @@ def create_task(escrow_address: str, chain_id: int) -> None:
             CLOUD_PROVIDER_TO_CVAT_CLOUD_PROVIDER[data_bucket.provider],
             data_bucket.bucket_name,
             bucket_host=data_bucket.host_url,
-            **({ "credentials": data_bucket.credentials.to_dict() } if data_bucket.credentials else {})
+            **(
+                {"credentials": data_bucket.credentials.to_dict()}
+                if data_bucket.credentials
+                else {}
+            ),
         )
 
         # Create a project

@@ -1,8 +1,8 @@
 from typing import Dict, List
 
 import src.cvat.api_calls as cvat_api
-import src.services.cloud as cloud_service
 import src.models.cvat as cvat_models
+import src.services.cloud as cloud_service
 import src.services.cvat as cvat_service
 import src.services.webhook as oracle_db_service
 from src.chain.escrow import get_escrow_manifest, validate_escrow

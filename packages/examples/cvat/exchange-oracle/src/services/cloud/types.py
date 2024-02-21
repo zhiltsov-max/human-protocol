@@ -117,9 +117,7 @@ class BucketAccessInfo:
                 path=path,
             )
         else:
-            raise ValueError(
-                f"{parsed_url.netloc} cloud provider is not supported by CVAT."
-            )
+            raise ValueError(f"{parsed_url.netloc} cloud provider is not supported by CVAT.")
 
     @classmethod
     def from_dict(cls, data: Dict) -> BucketAccessInfo:

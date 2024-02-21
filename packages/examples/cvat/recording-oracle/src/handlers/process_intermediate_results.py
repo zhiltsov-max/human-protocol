@@ -199,9 +199,7 @@ class _BoxesFromPointsValidator(_TaskValidator):
         layout = boxes_from_points_task.TaskMetaLayout()
         serializer = boxes_from_points_task.TaskMetaSerializer()
 
-        oracle_data_bucket = BucketAccessInfo.parse_obj(
-            Config.exchange_oracle_storage_config
-        )
+        oracle_data_bucket = BucketAccessInfo.parse_obj(Config.exchange_oracle_storage_config)
 
         storage_client = make_cloud_client(oracle_data_bucket)
 

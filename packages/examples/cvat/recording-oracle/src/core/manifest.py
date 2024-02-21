@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Optional, Union, Dict
+from typing import Dict, Optional, Union
 
 from pydantic import AnyUrl, BaseModel, Field, root_validator
 
