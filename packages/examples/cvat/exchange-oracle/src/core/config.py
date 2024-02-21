@@ -91,7 +91,10 @@ class CvatConfig:
 
 class StorageConfig:
     provider: ClassVar[str] = os.environ["STORAGE_PROVIDER"].lower()
-    data_bucket_name: ClassVar[str] = os.environ["STORAGE_RESULTS_BUCKET_NAME"]
+    data_bucket_name: ClassVar[str] = (
+        os.environ.get("STORAGE_RESULTS_BUCKET_NAME")  # backward compatibility
+        or os.environ["STORAGE_BUCKET_NAME"]
+    )
     endpoint_url: ClassVar[str] = os.environ[
         "STORAGE_ENDPOINT_URL"
     ]  # TODO: probably should be optional
