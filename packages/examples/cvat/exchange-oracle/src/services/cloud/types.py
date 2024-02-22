@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum, auto
+from inspect import isclass
 from typing import Dict, Optional, Type, Union
 from urllib.parse import urlparse
 
@@ -128,7 +129,7 @@ class BucketAccessInfo:
             raise ValueError(f"{parsed_url.netloc} cloud provider is not supported.")
 
     @classmethod
-    def from_dict(cls, data: Dict) -> BucketAccessInfo:
+    def _from_dict(cls, data: Dict) -> BucketAccessInfo:
         for required_field in (
             "provider",
             "bucket_name",
@@ -139,14 +140,20 @@ class BucketAccessInfo:
                     "specified in the bucket configuration"
                 )
 
-        data["provider"] = CloudProviders.from_str(data["provider"].lower())
+        provider = CloudProviders.from_str(data["provider"])
+        data["provider"] = provider
 
-        if (access_key := data.pop("access_key", None)) and (
-            secret_key := data.pop("secret_key", None)
-        ):
+        if provider == CloudProviders.aws:
+            access_key = data.pop("access_key", None)
+            secret_key = data.pop("secret_key", None)
+            if bool(access_key) ^ bool(secret_key):
+                raise ValueError("access_key and secret_key can only be used together")
+
             data["credentials"] = S3BucketCredentials(access_key, secret_key)
 
-        elif service_account_key := data.pop("service_account_key", None):
+        elif provider == CloudProviders.gcs and (
+            service_account_key := data.pop("service_account_key", None)
+        ):
             data["credentials"] = GcsBucketCredentials(service_account_key)
 
         return BucketAccessInfo(**data)
@@ -163,16 +170,18 @@ class BucketAccessInfo:
         )
 
     @classmethod
+    def from_bucket_url(cls, bucket_url: manifest.BucketUrl) -> BucketAccessInfo:
+        return cls._from_dict(bucket_url.dict())
+
+    @classmethod
     def parse_obj(
-        cls, data: Union[Dict, str, Type[StorageConfig], manifest.BucketUrl]
+        cls, data: Union[str, Type[StorageConfig], manifest.BucketUrl]
     ) -> BucketAccessInfo:
-        if isinstance(data, dict):
-            return cls.from_dict(data)
-        elif isinstance(data, manifest.BucketUrlBase):
-            return cls.from_dict(data.dict())
+        if isinstance(data, manifest.BucketUrlBase):
+            return cls.from_bucket_url(data)
         elif isinstance(data, str):
             return cls.from_url(data)
-        elif issubclass(data, StorageConfig):
+        elif isclass(data) and issubclass(data, StorageConfig):
             return cls.from_storage_config(data)
 
         raise TypeError(f"Unsupported data type ({type(data)}) was provided")
