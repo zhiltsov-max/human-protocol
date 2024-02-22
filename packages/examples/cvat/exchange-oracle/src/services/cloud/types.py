@@ -23,7 +23,7 @@ class CloudProviders(Enum, metaclass=BetterEnumMeta):
     def from_str(cls, provider: str) -> CloudProviders:
         try:
             return cls[provider.lower()]
-        except ValueError:
+        except KeyError:
             raise ValueError(
                 f"The '{provider}' is not supported. "
                 f"List with supported providers: {', '.join(x.name for x in cls)}"
