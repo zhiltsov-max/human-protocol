@@ -8,26 +8,26 @@ from src.core.config import Config
 from src.core.types import TaskType
 
 
-class BucketProvider(str, Enum):
+class BucketProviders(str, Enum):
     aws = "AWS"
     gcs = "GCS"
 
 
 class BucketUrlBase(BaseModel):
-    provider: BucketProvider
+    provider: BucketProviders
     host_url: str
     bucket_name: str
     path: str = ""
 
 
 class AwsBucketUrl(BucketUrlBase, BaseModel):
-    provider: Literal[BucketProvider.aws]
+    provider: Literal[BucketProviders.aws]
     access_key: str = ""  # (optional) AWS Access key
     secret_key: str = ""  # (optional) AWS Secret key
 
 
 class GcsBucketUrl(BucketUrlBase, BaseModel):
-    provider: Literal[BucketProvider.gcs]
+    provider: Literal[BucketProviders.gcs]
     service_account_key: Dict[str, Any] = {}  # (optional) Contents of GCS key file
 
 
